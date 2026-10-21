@@ -1,0 +1,15 @@
+# A configuration file, of the kind a tool might read at startup.
+server:
+  host: 0.0.0.0
+  port: 8080
+  tls:
+    enabled: true
+    certificates:
+      - /etc/ssl/server.crt
+      - /etc/ssl/chain.crt
+paths:
+  data: /var/lib/app/data
+  logs: /var/log/app
+features:
+  - tracing
+  - metrics

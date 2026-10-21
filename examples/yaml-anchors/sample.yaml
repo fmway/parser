@@ -1,0 +1,16 @@
+# An anchor gives a name to a node, and an alias stands for it.
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+development:
+  config: *defaults
+  database: dev
+# A merge key brings the entries of another mapping in. The key that the
+# mapping holds itself wins over the one that was merged in.
+production:
+  <<: *defaults
+  host: db.example.com
+  database: prod
+# A tag says what the node is.
+release: !!int 42
+built: !!str "a string"

@@ -1,0 +1,38 @@
+# A small document that shows what the parser understands.
+name: nix-parsec
+version: 1.2
+description: A parser combinator library for Nix
+tags:
+  - parsing
+  - nix
+authors:
+  - name: Eelco Visser
+    email: eelco.visser@gmail.com
+  - name: Tom van der Zanden
+    email: tom.vanderzanden@gmail.com
+repository:
+  url: https://github.com/kanwren/nix-parsec
+  stars: 120
+  forks: 12
+settings:
+  debug: false
+  retries: 3
+  limits:
+    max-depth: 100
+    timeout: 30
+  matrix:
+    - [ 1, 2 ]
+    - [ 3, 4 ]
+notes: |
+  A block scalar keeps
+  every line break.
+folded: >
+  A folded scalar joins
+  its lines with a space.
+quoted: "a string with a # in it"
+escaped: "a \"quoted\" word"
+empty:
+nothing: null
+flag: true
+count: 42
+ratio: 0.5
