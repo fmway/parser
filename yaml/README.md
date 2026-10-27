@@ -25,19 +25,6 @@ error:
            | ^ duplicate key 'a'
 ```
 
-The parser needs `nix-parsec`, and fetches it from the published source
-of that repository at a fixed revision, so it works without a checkout
-of it and without flakes.
-
-Working on the parser itself is easier with the combinators of the
-checkout at hand. Setting `NIX_PARSEC_LOCAL` to the directory of a
-checkout makes the parser use that instead of fetching it:
-
-```console
-$ NIX_PARSEC_LOCAL=$PWD nix eval --impure --json --expr \
-    '(import ./yaml).safeParse {} "a: 1\n"'
-```
-
 ## Usage
 
 The parser is exposed through `yaml/default.nix`:

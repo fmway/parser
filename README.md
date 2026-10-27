@@ -48,5 +48,4 @@ Runnable examples live in `examples/yaml*/` (see their `parse.sh`).
 
 ## Dependency
 
-`nix-parsec` is fetched at a fixed revision through `deps.nix`. For local
-development, point `NIX_PARSEC_LOCAL` at a checkout of nix-parsec.
+`nix-parsec` is fetched at a fixed revision through `deps.nix`
