@@ -45,6 +45,10 @@ Supported marker forms:
 The expression receives `context` (the selected target text) and helper functions such as
 `replace_quoted`, `replace_color`, `replace_value`, `replace_between`, and `replace_many`.
 
+## v2 and Yolk
+
+v2 comment-driven transforms are inspired by [Yolk](https://github.com/elkowar/yolk).
+
 ## Errors
 
 Parse errors are rendered like the YAML parser: phase, line, column, source excerpt, and
