@@ -27,8 +27,7 @@ let
       let
         r = resolve args;
         parsed = parser.safeParse {
-          prefix = args.prefix;
-          postfix = args.postfix;
+          inherit (args) prefix postfix;
           text = r.text;
         };
       in
@@ -40,32 +39,24 @@ let
       let
         r = resolve args;
         parsed = parse args;
-        cwd = args.cwd or r.cwd;
         scope = args.scope or {};
       in
-        render.renderSegments parsed.segments cwd scope;
+        render.renderSegments parsed.segments r.cwd scope;
   in {
     inherit parse eval;
     safeParse = args:
-      let
-        r = resolve args;
-      in
-        parser.safeParse {
-          prefix = args.prefix;
-          postfix = args.postfix;
-          text = r.text;
-        };
+      parser.safeParse {
+        inherit (args) prefix postfix;
+        inherit (resolve args) text;
+      };
   };
 
   v2 = let
     safeParse = args:
-      let
-        r = resolve args;
-      in
-        commentParser.safeParse {
-          text = r.text;
-          commentStyle = args.commentStyle;
-        };
+      commentParser.safeParse {
+        text = (resolve args).text;
+        commentStyle = args.commentStyle or "auto";
+      };
 
     parse = args:
       let
@@ -79,24 +70,21 @@ let
     eval = args:
       let
         r = resolve args;
-        interpolation = args.interpolation;
-        cwd = args.cwd or r.cwd;
         scope = args.scope or {};
         interpolated =
-          if interpolation == null
+          if args.interpolation or null == null
           then r.text
           else v1.eval {
-            prefix = interpolation.prefix;
-            postfix = interpolation.postfix;
-            text = r.text;
-            inherit cwd scope;
+            inherit (args.interpolation) postfix prefix;
+            inherit (r) text cwd;
+            inherit scope;
           };
         parsed = parse {
           text = interpolated;
-          commentStyle = args.commentStyle;
+          commentStyle = args.commentStyle or "auto";
         };
       in
-        commentRender.renderTemplate parsed cwd scope;
+        commentRender.renderTemplate parsed r.cwd scope;
   in {
     inherit safeParse parse eval;
   };

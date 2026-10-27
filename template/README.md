@@ -35,6 +35,13 @@ template.v2.eval {
 }
 ```
 
+`commentStyle` is optional. When omitted, it is inferred from the first marker,
+similar to Yolk. Explicit form:
+
+```nix
+commentStyle = { open = "# "; close = ""; };
+```
+
 Supported marker forms:
 
 - `{< expr >}`: transform text before the marker on the same line.

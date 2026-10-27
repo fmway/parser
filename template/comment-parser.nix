@@ -104,7 +104,7 @@ let
               value = parsed.value;
               terminatorEnd = markerEnd + value.consumed;
               close = commentStyle.close;
-              closeStart = strings.firstNonSpace text terminatorEnd;
+              closeStart = terminatorEnd;
               closeLength = b.stringLength close;
               closeMatches = closeLength == 0 || (
                 closeStart + closeLength <= b.stringLength text
@@ -301,43 +301,82 @@ let
       } ]
     else [];
 
-  safeParse = { text, commentStyle }:
+  knownCommentStyles = [
+    { open = "# "; close = ""; }
+    { open = "// "; close = ""; }
+    { open = "-- "; close = ""; }
+    { open = "; "; close = ""; }
+    { open = "/* "; close = " */"; }
+    { open = "<!-- "; close = " -->"; }
+  ];
+
+  inferCommentStyle = text:
+    let
+      candidates = b.map (style:
+        let
+          scanned = scan text style 0;
+        in
+          if scanned.type == "success" && scanned.directives != []
+          then {
+            inherit style;
+            index = (b.head scanned.directives).markerStart;
+          }
+          else null
+      ) knownCommentStyles;
+      present = b.filter (x: x != null) candidates;
+    in
+      if present == []
+      then { open = "# "; close = ""; }
+      else (b.head (b.sort (a: c: a.index < c.index) present)).style;
+
+  resolveCommentStyle = text: requested:
+    if requested == null || requested == "auto"
+    then inferCommentStyle text
+    else if b.isAttrs requested
+    then requested
+    else { open = "# "; close = ""; };
+
+  safeParse = { text, commentStyle ? "auto" }:
+    let
+      resolved = resolveCommentStyle text commentStyle;
+    in
     if !b.isString text
     then {
       type = "error";
       value = errorValue "" 0 "text must be a string" {};
     }
-    else if !b.isAttrs commentStyle || !b.isString commentStyle.open || commentStyle.open == ""
+    else if !b.isAttrs resolved || !b.isString resolved.open || resolved.open == ""
     then {
       type = "error";
       value = errorValue text 0 "commentStyle.open must be a non-empty string" {};
     }
-    else if !b.isString commentStyle.close
+    else if !b.isString resolved.close
     then {
       type = "error";
       value = errorValue text 0 "commentStyle.close must be a string" {};
     }
     else
       let
-        scanned = scan text commentStyle 0;
+        scanned = scan text resolved 0;
       in
         if scanned.type == "error"
-        then scanned
+        then { type = "error"; value = scanned.error; }
         else
           let
             paired = pairDirectives text scanned.directives;
           in
             if paired.type == "error"
-            then paired
+            then { type = "error"; value = paired.error; }
             else {
               type = "success";
               value = {
                 type = "comment-template";
-                inherit text commentStyle;
+                commentStyle = resolved;
+                inherit text;
                 directives = scanned.directives;
                 roots = paired.roots;
               };
             };
 in {
-  inherit safeParse collectEdits;
+  inherit safeParse collectEdits inferCommentStyle resolveCommentStyle;
 }
