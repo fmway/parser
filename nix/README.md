@@ -1,4 +1,4 @@
-# nix-parsec/nix
+# nix parser
 
 A Nix expression **parser and evaluator written in Nix itself**.
 
@@ -15,7 +15,7 @@ words, it avoids Import-From-Derivation (IFD) for string evaluation:
 # => 3
 ```
 
-The parser combinators come from the surrounding [`nix-parsec`](../README.md)
+The parser combinators come from the `nix-parsec` (https://github.com/kanwren/nix-parsec)
 library (`parsec.nix`, `lexer.nix`). Builtins are not reimplemented; they are
 called through the real `builtins` set ("FFI style"), and can be overridden via
 `scope.builtins`.

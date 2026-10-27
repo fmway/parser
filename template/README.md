@@ -1,4 +1,4 @@
-# nix-parsec templates
+# templates
 
 Pure-Nix templating built on `nix-parsec`. It avoids IFD in the framework itself:
 templates are parsed into an AST and evaluated with `nix.evalAst`.

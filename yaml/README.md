@@ -1,7 +1,7 @@
 # YAML 1.2 parser
 
 A YAML 1.2 parser written in pure Nix, built on top of
-[nix-parsec](../README.md).
+[nix-parsec](https://github.com/kanwren/nix-parsec).
 
 ```nix
 let
