@@ -267,14 +267,31 @@ let
       inherit depth;
     } ] ++ b.concatMap (child: collectEdits text child (depth + 1)) node.children
     else if node.type == "inline"
-    then [ {
-      type = "inline";
-      targetStart = strings.lineStart text node.wrapperStart;
-      targetEnd = node.wrapperStart;
-      expression = node.expression;
-      ast = node.ast;
-      inherit depth;
-    } ]
+    then
+      let
+        trimmedEnd = strings.lastNonSpace text node.wrapperStart;
+        lineStart = strings.lineStart text node.wrapperStart;
+        targetEnd = if trimmedEnd < lineStart then lineStart else trimmedEnd;
+      in [ {
+        type = "inline";
+        targetStart = lineStart;
+        inherit targetEnd;
+        expression = node.expression;
+        ast = node.ast;
+        inherit depth;
+      } ]
+    else if node.type == "nextChain"
+    then
+      let
+        last = b.elemAt node.directives (b.length node.directives - 1);
+        nextStart = strings.min (b.stringLength text) ((strings.lineEnd text last.wrapperEnd) + 1);
+      in [ {
+        type = "nextChain";
+        asts = node.asts;
+        targetStart = nextStart;
+        targetEnd = strings.lineEnd text nextStart;
+        inherit depth;
+      } ]
     else if node.type == "next"
     then
       let
@@ -336,6 +353,50 @@ let
     then requested
     else { open = "# "; close = ""; };
 
+  makeNextChain = chain:
+    if b.length chain == 1
+    then b.head chain
+    else {
+      type = "nextChain";
+      directives = chain;
+      wrapperStart = (b.elemAt chain (b.length chain - 1)).wrapperStart;
+      wrapperEnd = (b.elemAt chain (b.length chain - 1)).wrapperEnd;
+      markerStart = (b.head chain).markerStart;
+      markerEnd = (b.elemAt chain (b.length chain - 1)).markerEnd;
+      asts = b.map (d: d.ast) chain;
+    };
+
+  adjacentNext = text: a: c:
+    strings.lineStart text c.markerStart
+    == strings.lineEnd text a.wrapperEnd + 1;
+
+  groupNextChains = text: directives:
+    let
+      go = chain: remaining: acc:
+        if remaining == []
+        then
+          if chain == []
+          then acc
+          else acc ++ [ (makeNextChain chain) ]
+        else
+          let
+            d = b.head remaining;
+            rest = b.tail remaining;
+            isNext = d.type == "next";
+          in
+            if chain == []
+            then
+              if isNext
+              then go [ d ] rest acc
+              else go [] rest (acc ++ [ d ])
+            else if isNext && adjacentNext text (b.elemAt chain (b.length chain - 1)) d
+            then go (chain ++ [ d ]) rest acc
+            else if isNext
+            then go [ d ] rest (acc ++ [ (makeNextChain chain) ])
+            else go [] rest (acc ++ [ (makeNextChain chain) ] ++ [ d ]);
+    in
+      go [] directives [];
+
   safeParse = { text, commentStyle ? "auto" }:
     let
       resolved = resolveCommentStyle text commentStyle;
@@ -363,7 +424,8 @@ let
         then { type = "error"; value = scanned.error; }
         else
           let
-            paired = pairDirectives text scanned.directives;
+            grouped = groupNextChains text scanned.directives;
+            paired = pairDirectives text grouped;
           in
             if paired.type == "error"
             then { type = "error"; value = paired.error; }
@@ -371,9 +433,9 @@ let
               type = "success";
               value = {
                 type = "comment-template";
-                commentStyle = resolved;
                 inherit text;
-                directives = scanned.directives;
+                commentStyle = resolved;
+                directives = grouped;
                 roots = paired.roots;
               };
             };

@@ -27,6 +27,24 @@ let
       else total
     ) 0 adjustments;
 
+  transformValue = ast: current: cwd: scope:
+    let
+      evaluated = nix.evalAst {
+        ast = ast;
+        inherit cwd;
+        scope = scopeFor scope current;
+      };
+      result =
+        if b.isFunction evaluated
+        then evaluated current
+        else if b.isAttrs evaluated && evaluated ? __functor && b.isFunction evaluated.__functor
+        then evaluated.__functor evaluated current
+        else evaluated;
+    in
+      render.renderValue result;
+
+  reverseList = xs: b.foldl' (acc: x: [ x ] ++ acc) [] xs;
+
   applyEdit = text: scope: cwd: adjustments: edit:
     let
       adjustedEnd = edit.targetEnd + adjustmentFor edit adjustments;
@@ -37,11 +55,9 @@ let
       replacement =
         if edit.type == "rawBlock" || edit.type == "rawNext"
         then current
-        else render.renderValue (nix.evalAst {
-          ast = edit.ast;
-          cwd = cwd;
-          scope = scopeFor scope current;
-        });
+        else if edit.type == "nextChain"
+        then b.foldl' (ctx: ast: transformValue ast ctx cwd scope) current (reverseList edit.asts)
+        else transformValue edit.ast current cwd scope;
       updated =
         b.substring 0 edit.targetStart text
         + replacement

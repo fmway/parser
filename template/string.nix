@@ -79,5 +79,5 @@ let
     in
       if newline == null then length else newline;
 in {
-  inherit isSpace min findFrom lastIndexOf firstNonSpace trim lineStart lineEnd;
+  inherit isSpace min findFrom lastIndexOf firstNonSpace lastNonSpace trim lineStart lineEnd;
 }
