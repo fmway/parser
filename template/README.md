@@ -74,6 +74,11 @@ implementation parses into an AST and evaluates it directly.
 
 For very small templates the difference is negligible.
 
+v2 comment-driven transforms are different: on a 300-line file with 100 blocks,
+the new implementation took about 8.93s, while the previous IFD/regex parser
+took about 0.072s. v2 pays for evaluating expressions with the self-hosted Nix
+evaluator. The trade-off is no IFD and structured diagnostics, not raw speed.
+
 ## Notes
 
 - Delimiters are literal strings, not regular expressions.

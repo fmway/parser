@@ -32,8 +32,18 @@ let
         scope = args.scope or {};
       in evalMod.evalAst { inherit ast cwd scope; }
     else throw "evalAst expects attrset";
+
+  evalAstSafe = args:
+    if builtins.isAttrs args
+    then
+      let
+        ast = args.ast;
+        cwd = args.cwd or (dirOf (builtins.unsafeGetAttrPos "ast" args).file);
+        scope = args.scope or {};
+      in evalMod.evalAstSafe { inherit ast cwd scope; }
+    else throw "evalAstSafe expects attrset";
 in {
-  inherit eval evalAst parsec;
+  inherit eval evalAst evalAstSafe parsec;
   lexer = lexerMod;
   parser = parserMod;
   ast = ast;

@@ -3,14 +3,14 @@ let
   strings = import ./string.nix;
   errors = import ./error.nix {};
   parser = import ./parser.nix { nixParser = nix.parser; };
-  render = import ./render.nix { inherit nix; };
+  render = import ./render.nix { inherit nix errors; };
   commentParser = import ./comment-parser.nix {
     nixParser = nix.parser;
     inherit strings;
   };
   helpers = import ./helpers.nix { inherit strings; };
   commentRender = import ./comment-render.nix {
-    inherit commentParser helpers nix render;
+    inherit commentParser helpers nix render errors;
   };
 
   b = builtins;
@@ -41,7 +41,7 @@ let
         parsed = parse args;
         scope = args.scope or {};
       in
-        render.renderSegments parsed.segments r.cwd scope;
+        render.renderSegments parsed.text parsed.segments r.cwd scope;
   in {
     inherit parse eval;
     safeParse = args:

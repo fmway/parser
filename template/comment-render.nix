@@ -1,4 +1,4 @@
-{ commentParser, helpers, nix, render }:
+{ commentParser, helpers, nix, render, errors }:
 let
   b = builtins;
 
@@ -27,21 +27,27 @@ let
       else total
     ) 0 adjustments;
 
-  transformValue = ast: current: cwd: scope:
-    let
-      evaluated = nix.evalAst {
-        ast = ast;
-        inherit cwd;
-        scope = scopeFor scope current;
-      };
-      result =
-        if b.isFunction evaluated
-        then evaluated current
-        else if b.isAttrs evaluated && evaluated ? __functor && b.isFunction evaluated.__functor
-        then evaluated.__functor evaluated current
-        else evaluated;
-    in
-      render.renderValue result;
+  transformValue = ast: current: cwd: scope: location: text:
+    builtins.addErrorContext (errors.errorMessage text {
+      offset = location;
+      msg = "";
+      context = "template";
+    }) (
+      let
+        evaluated = nix.evalAst {
+          ast = ast;
+          inherit cwd;
+          scope = scopeFor scope current;
+        };
+        value =
+          if b.isFunction evaluated
+          then evaluated current
+          else if b.isAttrs evaluated && evaluated ? __functor && b.isFunction evaluated.__functor
+          then evaluated.__functor evaluated current
+          else evaluated;
+      in
+        render.renderValue value
+    );
 
   reverseList = xs: b.foldl' (acc: x: [ x ] ++ acc) [] xs;
 
@@ -56,8 +62,21 @@ let
         if edit.type == "rawBlock" || edit.type == "rawNext"
         then current
         else if edit.type == "nextChain"
-        then b.foldl' (ctx: ast: transformValue ast ctx cwd scope) current (reverseList edit.asts)
-        else transformValue edit.ast current cwd scope;
+        then
+          let
+            go = i: ctx:
+              if i >= b.length edit.asts
+              then ctx
+              else
+                let
+                  ast = b.elemAt edit.asts i;
+                  location = b.elemAt edit.expressionStarts i;
+                  next = transformValue ast ctx cwd scope location text;
+                in
+                  go (i + 1) next;
+          in
+            go 0 current
+        else transformValue edit.ast current cwd scope edit.expressionStart text;
       updated =
         b.substring 0 edit.targetStart text
         + replacement

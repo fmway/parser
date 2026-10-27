@@ -264,6 +264,7 @@ let
       targetEnd = node.bodyEnd;
       expression = node.expression;
       ast = node.ast;
+      expressionStart = node.expressionStart;
       inherit depth;
     } ] ++ b.concatMap (child: collectEdits text child (depth + 1)) node.children
     else if node.type == "inline"
@@ -278,6 +279,7 @@ let
         inherit targetEnd;
         expression = node.expression;
         ast = node.ast;
+        expressionStart = node.expressionStart;
         inherit depth;
       } ]
     else if node.type == "nextChain"
@@ -288,6 +290,7 @@ let
       in [ {
         type = "nextChain";
         asts = node.asts;
+        expressionStarts = b.map (d: d.expressionStart) node.directives;
         targetStart = nextStart;
         targetEnd = strings.lineEnd text nextStart;
         inherit depth;
@@ -302,6 +305,7 @@ let
         targetEnd = strings.lineEnd text nextStart;
         expression = node.expression;
         ast = node.ast;
+        expressionStart = node.expressionStart;
         inherit depth;
       } ]
     else if node.type == "rawNext"
@@ -314,6 +318,7 @@ let
         targetEnd = strings.lineEnd text nextStart;
         expression = node.expression;
         ast = node.ast;
+        expressionStart = node.expressionStart;
         inherit depth;
       } ]
     else [];

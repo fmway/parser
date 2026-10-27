@@ -73,6 +73,14 @@ let
       else if fv == null then "null"
       else "other";
 
+  safeToString = v: env: bb:
+    let fv = deepForce v env bb;
+    in
+      if b.isString fv then fv
+      else if b.isInt fv || b.isFloat fv || b.isBool fv || fv == null then b.toString fv
+      else if b.isPath fv then b.toString fv
+      else "<${b.typeOf fv}>";
+
   # Structural equality following Nix's rules.
   #
   #  * Two functions are never equal when compared directly (`f == f` is
@@ -168,10 +176,12 @@ let
   # Dynamic attribute names are evaluated in the scope of the set being
   # extended (which may be a nested `rec`); their resolution is deferred to
   # evaluation here.
-  checkPath = names: hasWith: path:
-    b.foldl' (ok: c:
-      if c ? static then ok else ok && checkExpr names hasWith c.dynamic
-    ) true path;
+  checkPathMessage = names: hasWith: path:
+    b.foldl' (acc: c:
+      if acc != null then acc
+      else if c ? static then null
+      else checkExprMessage names hasWith c.dynamic
+    ) null path;
 
   boundNames = bindings:
     b.concatMap (x:
@@ -179,7 +189,7 @@ let
       else let c = b.head x.path; in if c ? static then [ c.static ] else []
     ) bindings;
 
-  checkBindings = names: hasWith: recursive: bindings:
+  checkBindingsMessage = names: hasWith: recursive: bindings:
     let
       inner = if recursive then names ++ boundNames bindings else names;
       firstStatic = x:
@@ -215,41 +225,47 @@ let
            then names ++ recScope k
            else inner;
     in
-      b.foldl' (ok: x:
-        let
-          scope = scopeFor x;
-          checkName = checkPath scope hasWith x.path;
-          checkValue =
-            if (x.outer or false)
-            then
-              (if (x.value.type or "") == "var"
-               then checkExpr names hasWith x.value
-               else checkExpr scope hasWith x.value)
-            else checkExpr scope hasWith x.value;
-        in checkName && checkValue
-      ) true bindings;
+      b.foldl' (acc: x:
+        if acc != null then acc
+        else
+          let
+            scope = scopeFor x;
+            checkName = checkPathMessage scope hasWith x.path;
+            checkValue =
+              if (x.outer or false)
+              then
+                (if (x.value.type or "") == "var"
+                 then checkExprMessage names hasWith x.value
+                 else checkExprMessage scope hasWith x.value)
+              else checkExprMessage scope hasWith x.value;
+          in
+            if checkName != null then checkName
+            else if checkValue != null then checkValue
+            else null
+      ) null bindings;
 
-  checkExpr = names: hasWith: expr:
+  checkExprMessage = names: hasWith: expr:
     let
       t = expr.type or "";
-      check = checkExpr names hasWith;
+      check = checkExprMessage names hasWith;
+      andMsg = a: c: if a != null then a else c;
     in
       if t == "var" then
-        (if b.elem expr.name names || hasWith then true
-         else throw "undefined variable '${expr.name}'")
-      else if t == "lit" then true
+        (if b.elem expr.name names || hasWith then null
+         else "undefined variable '${expr.name}'")
+      else if t == "lit" then null
       else if t == "string" then
-        b.foldl' (ok: p: if b.isString p then ok else check p.interp) true expr.parts
+        b.foldl' (acc: p: if acc != null then acc else if b.isString p then null else check p.interp) null expr.parts
       else if t == "path" then
-        b.foldl' (ok: p: if b.isString p then ok else check p.interp) true expr.parts
-      else if t == "searchPath" then true
+        b.foldl' (acc: p: if acc != null then acc else if b.isString p then null else check p.interp) null expr.parts
+      else if t == "searchPath" then null
       else if t == "list" then
-        b.foldl' (ok: e: check e) true expr.elems
+        b.foldl' (acc: e: if acc != null then acc else check e) null expr.elems
       else if t == "attrs" then
-        checkBindings names hasWith (expr.recursive or false) expr.bindings
+        checkBindingsMessage names hasWith (expr.recursive or false) expr.bindings
       else if t == "let" then
-        checkBindings names hasWith true expr.bindings
-        && checkExpr (names ++ boundNames expr.bindings) hasWith expr.body
+        andMsg (checkBindingsMessage names hasWith true expr.bindings)
+               (checkExprMessage (names ++ boundNames expr.bindings) hasWith expr.body)
       else if t == "lambda" then
         if expr ? pattern
         then
@@ -261,26 +277,31 @@ let
             dups = b.filter (n: counts.${n} > 1) argNames;
             inner = names ++ argNames;
           in
-            if dups != [] then throw "duplicate formal function argument '${b.head dups}'"
+            if dups != [] then "duplicate formal function argument '${b.head dups}'"
             else
-              b.foldl' (ok: e: if e ? default then checkExpr inner hasWith e.default else ok) true entries
-              && checkExpr inner hasWith expr.body
-        else checkExpr (names ++ [ expr.param ]) hasWith expr.body
-      else if t == "binop" then check expr.left && check expr.right
-      else if t == "app" then check expr.fn && check expr.arg
-      else if t == "if" then check expr.cond && check expr.thenBranch && check expr.elseBranch
-      else if t == "assert" then check expr.cond && check expr.body
+              andMsg (b.foldl' (acc: e: if acc != null then acc else if e ? default then checkExprMessage inner hasWith e.default else null) null entries)
+                     (checkExprMessage inner hasWith expr.body)
+        else checkExprMessage (names ++ [ expr.param ]) hasWith expr.body
+      else if t == "binop" then andMsg (check expr.left) (check expr.right)
+      else if t == "app" then andMsg (check expr.fn) (check expr.arg)
+      else if t == "if" then andMsg (check expr.cond) (andMsg (check expr.thenBranch) (check expr.elseBranch))
+      else if t == "assert" then andMsg (check expr.cond) (check expr.body)
       else if t == "with" then
-        check expr.env && checkExpr names true expr.body
-      else if t == "or" then check expr.sel && check expr.default
-      else if t == "hasattr" then check expr.base && checkPath names hasWith expr.path
-      else true;
+        andMsg (check expr.env) (checkExprMessage names true expr.body)
+      else if t == "or" then andMsg (check expr.sel) (check expr.default)
+      else if t == "hasattr" then andMsg (check expr.base) (checkPathMessage names hasWith expr.path)
+      else null;
+
+  checkExpr = names: hasWith: expr:
+    let r = checkExprMessage names hasWith expr;
+    in if r == null then true else throw r;
 
   evalBinOp = op: left: right: env: bb:
     let
       fl = force (evalExpr left env) env bb;
       fr = force (evalExpr right env) env bb;
       lt = getType fl env bb;
+      rt = getType fr env bb;
     in
       if op == "+"
       then
@@ -289,18 +310,44 @@ let
         else if lt == "path" then
           (if b.isPath fr then fl + fr
            else fl + coercePathPart (deepForce fr env bb))
-        else bb.add (toForeign fl env bb) (toForeign fr env bb)
-      else if op == "-" then bb.sub (toForeign fl env bb) (toForeign fr env bb)
-      else if op == "/" then bb.div (toForeign fl env bb) (toForeign fr env bb)
-      else if op == "*" then bb.mul (toForeign fl env bb) (toForeign fr env bb)
-      else if op == "++" then bb.concatLists [ (toForeign fl env bb) (toForeign fr env bb) ]
-      else if op == "//" then fl // fr
+        else
+          (if ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) || (lt == "attrs" && fl ? __add)
+           then bb.add (toForeign fl env bb) (toForeign fr env bb)
+           else throw (if !(lt == "int" || lt == "float" || (lt == "attrs" && fl ? __add)) then "expected a number but found a ${lt}: ${safeToString fl env bb}" else "expected a number but found a ${rt}: ${safeToString fr env bb}"))
+      else if op == "-" then
+        (if ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) || (lt == "attrs" && fl ? __sub)
+         then bb.sub (toForeign fl env bb) (toForeign fr env bb)
+         else throw (if !(lt == "int" || lt == "float" || (lt == "attrs" && fl ? __sub)) then "expected a number but found a ${lt}: ${safeToString fl env bb}" else "expected a number but found a ${rt}: ${safeToString fr env bb}"))
+      else if op == "/" then
+        (if ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) || (lt == "attrs" && fl ? __div)
+         then bb.div (toForeign fl env bb) (toForeign fr env bb)
+         else throw (if !(lt == "int" || lt == "float" || (lt == "attrs" && fl ? __div)) then "expected a number but found a ${lt}: ${safeToString fl env bb}" else "expected a number but found a ${rt}: ${safeToString fr env bb}"))
+      else if op == "*" then
+        (if ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) || (lt == "attrs" && fl ? __mul)
+         then bb.mul (toForeign fl env bb) (toForeign fr env bb)
+         else throw (if !(lt == "int" || lt == "float" || (lt == "attrs" && fl ? __mul)) then "expected a number but found a ${lt}: ${safeToString fl env bb}" else "expected a number but found a ${rt}: ${safeToString fr env bb}"))
+      else if op == "++" then
+        (if lt == "list" && rt == "list"
+         then bb.concatLists [ (toForeign fl env bb) (toForeign fr env bb) ]
+         else throw "expected a list but found a ${if lt != "list" then lt else rt}")
+      else if op == "//" then
+        (if b.isAttrs fl && b.isAttrs fr
+         then fl // fr
+         else throw "expected an attribute set but found a ${if !b.isAttrs fl then lt else rt}")
       else if op == "==" then eqValues fl fr env bb
       else if op == "!=" then !(eqValues fl fr env bb)
-      else if op == "<" then deepForce fl env bb < deepForce fr env bb
-      else if op == ">" then deepForce fl env bb > deepForce fr env bb
-      else if op == "<=" then deepForce fl env bb <= deepForce fr env bb
-      else if op == ">=" then deepForce fl env bb >= deepForce fr env bb
+      else if op == "<" then
+        (if (lt == rt) || ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) then deepForce fl env bb < deepForce fr env bb
+         else throw "cannot compare a ${lt} with a ${rt}")
+      else if op == ">" then
+        (if (lt == rt) || ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) then deepForce fl env bb > deepForce fr env bb
+         else throw "cannot compare a ${lt} with a ${rt}")
+      else if op == "<=" then
+        (if (lt == rt) || ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) then deepForce fl env bb <= deepForce fr env bb
+         else throw "cannot compare a ${lt} with a ${rt}")
+      else if op == ">=" then
+        (if (lt == rt) || ((lt == "int" || lt == "float") && (rt == "int" || rt == "float")) then deepForce fl env bb >= deepForce fr env bb
+         else throw "cannot compare a ${lt} with a ${rt}")
       else if op == "!" then !fl
       else if op == "neg" then -fl
       else throw "unsupported operator '${op}'";
@@ -694,9 +741,36 @@ let
   evalAst = { ast, cwd ? null, scope ? {} }:
     let
       bb = builtinsBridge.getBuiltins scope;
-      checked = checkExpr (baseNames scope) false ast;
+      checked = checkExprMessage (baseNames scope) false ast;
       topEnv = { __scope = scope; __cwd = cwd; __builtins = bb; };
-    in if checked then deepForce (evalExpr ast topEnv) topEnv bb else true;
+    in
+      if checked != null then throw checked
+      else deepForce (evalExpr ast topEnv) topEnv bb;
+
+  evalAstSafe = { ast, cwd ? null, scope ? {} }:
+    let
+      bb = builtinsBridge.getBuiltins scope;
+      checked = checkExprMessage (baseNames scope) false ast;
+    in
+      if checked != null then {
+        success = false;
+        value = false;
+        message = checked;
+      }
+      else
+        let
+          topEnv = { __scope = scope; __cwd = cwd; __builtins = bb; };
+          result = b.tryEval (deepForce (evalExpr ast topEnv) topEnv bb);
+        in
+          if result.success then {
+            success = true;
+            value = result.value;
+            message = null;
+          } else {
+            success = false;
+            value = false;
+            message = "evaluation failed";
+          };
 
   eval = { text, cwd ? null, scope ? {} }:
     evalAst {
@@ -705,5 +779,5 @@ let
     };
 in {
   evalString = eval;
-  inherit evalAst evalExpr force deepForce evalBinOp getType;
+  inherit evalAst evalAstSafe evalExpr force deepForce evalBinOp getType;
 }

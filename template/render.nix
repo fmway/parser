@@ -1,4 +1,4 @@
-{ nix }:
+{ nix, errors }:
 let
   b = builtins;
 
@@ -15,14 +15,19 @@ let
     then if value ? __toString then b.toString value else b.toJSON value
     else b.toString value;
 
-  renderSegments = segments: cwd: scope:
+  renderSegments = text: segments: cwd: scope:
     b.concatStringsSep "" (b.map (segment:
       if segment.type == "literal"
       then segment.text
-      else renderValue (nix.evalAst {
-        ast = segment.ast;
-        inherit cwd scope;
-      })
+      else
+        builtins.addErrorContext (errors.errorMessage text {
+          offset = segment.expressionStart;
+          msg = "";
+          context = "template";
+        }) (renderValue (nix.evalAst {
+          ast = segment.ast;
+          inherit cwd scope;
+        }))
     ) segments);
 in {
   inherit renderValue renderSegments;
