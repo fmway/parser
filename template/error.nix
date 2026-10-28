@@ -1,4 +1,3 @@
-{ }:
 let
   b = builtins;
   style = import ../utils/style.nix;

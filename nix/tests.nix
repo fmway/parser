@@ -337,7 +337,7 @@ in rec {
     { name = "indented-escape-tab"; expr = "''''\\t''"; expected = "\t"; }
   ];
   
-  run = builtins.map (t:
+  run = map (t:
     let
       result =
         if t ? expectThrow then

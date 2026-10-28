@@ -733,13 +733,10 @@ in rec {
       parseHeader = st:
         let
           # The characters of the header, up to two of them.
-          headerChars =
-            let
-              take = n: b.substring st.offset (if n < st.len then n else st.len) st.str;
-            in [
-              (if st.len >= 1 then b.substring st.offset 1 st.str else "")
-              (if st.len >= 2 then b.substring (st.offset + 1) 1 st.str else "")
-            ];
+          headerChars =[
+            (if st.len >= 1 then b.substring st.offset 1 st.str else "")
+            (if st.len >= 2 then b.substring (st.offset + 1) 1 st.str else "")
+          ];
           isDigit = c: c != "" && b.match "[0-9]" c != null;
           isChomp = c: c != "" && b.match "[+-]" c != null;
           c0 = b.elemAt headerChars 0;
@@ -950,7 +947,6 @@ in rec {
           then go 1 (b.elemAt lines 0).text
           else
             let
-              prev = b.elemAt lines (i - 1);
               cur = b.elemAt lines i;
               sep =
                 if cur.blanks == 0 then " "

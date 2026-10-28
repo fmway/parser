@@ -426,7 +426,6 @@ in rec {
         v = b.elemAt res 0;
         newOffset = b.elemAt res 1;
         newLen = b.elemAt res 2;
-        consumed = newOffset - s.offset;
       in [v (s // { offset = newOffset; len = newLen; })];
 
   # ------------------------------------------------------------------

@@ -1,3 +1,4 @@
+<!--{% ignore %}-->
 # templates
 
 Pure-Nix templating built on `nix-parsec`. It avoids IFD in the framework itself:
@@ -119,3 +120,4 @@ recursion)", while the new parser takes about 1.9 s.
 - The framework does not create store files, but an embedded expression may still
   use `import` or IFD.
 EOF
+<!--{% end %}-->

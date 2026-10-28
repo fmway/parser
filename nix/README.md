@@ -6,6 +6,7 @@ It parses a Nix expression from a string and evaluates it inside the Nix
 evaluator, so no derivation has to be built just to evaluate code. In other
 words, it avoids Import-From-Derivation (IFD) for string evaluation:
 
+<!--{% code.examples.nix-eval-simple %}-->
 ```nix
 # The usual IFD approach:
 #   import (builtins.toFile "expr.nix" "1 + 2")
@@ -14,6 +15,7 @@ words, it avoids Import-From-Derivation (IFD) for string evaluation:
 (import ./nix).eval "1 + 2"
 # => 3
 ```
+<!--{% end %}-->
 
 The parser combinators come from the `nix-parsec` (https://github.com/kanwren/nix-parsec)
 library (`parsec.nix`, `lexer.nix`). Builtins are not reimplemented; they are
@@ -26,16 +28,17 @@ called through the real `builtins` set ("FFI style"), and can be overridden via
 
 ## Quick start
 
+<!--{% code.examples.nix-eval-quickstart %}-->
 ```nix
 let
   nix = import ./nix;
-in
-{
-  arithmetic = nix.eval "1 + 2 * 3";              # 7
-  strings    = nix.eval "\"a\" + \"b\"";          # "ab"
+in {
+  arithmetic = nix.eval "1 + 2 + 3"; # 6
+  strings    = nix.eval "\"a\" + \"b\""; # "ab"
   functions  = nix.eval "let f = x: x * x; in f 5"; # 25
 }
 ```
+<!--{% end %}-->
 
 ## API
 
@@ -51,10 +54,12 @@ in
 
 ### `eval` — string form
 
+<!--{% code.examples.nix-eval-from-string %}-->
 ```nix
 (import ./nix).eval "1 + 2"
 # => 3
 ```
+<!--{% end %}-->
 
 Evaluation is pure Nix. Relative paths (`./`, `../`, bare `foo/bar`) have no
 meaning in this form, so they throw; use the attrset form with `cwd` instead.
@@ -63,13 +68,15 @@ Absolute paths and `~/...` work as usual (`~` uses `$HOME`).
 
 ### `eval` — attrset form
 
+<!--{% code.examples.nix-eval-from-attrs %}-->
 ```nix
 (import ./nix).eval {
-  text = "(import ./fixtures/simple.nix).b + 1";
+  text = "(import ./nix/fixtures/simple.nix).b + 1";
   # cwd is inferred from the file that contains `text`
 }
-# => 3
+=> 3
 ```
+<!--{% end %}-->
 
 Supported attributes:
 
@@ -81,11 +88,13 @@ Supported attributes:
 
 All other arguments are ignored.
 
+<!--{% code.examples.nix-eval-scope %}-->
 ```nix
 (import ./nix).eval {
-  text = "import ./foo.nix";
+  text = "./foo.nix";
   cwd = /some/directory;
 }
+# => /some/directory/foo.nix
 
 (import ./nix).eval {
   text = "x + 1";
@@ -93,25 +102,29 @@ All other arguments are ignored.
 }
 # => 6
 ```
+<!--{% end %}-->
 
 ### Overriding builtins
 
 If `scope.builtins` is present, it replaces the builtins set used by the
 evaluator:
 
+<!--{% code.examples.nix-eval-override-builtins %}-->
 ```nix
 (import ./nix).eval {
-  text = "foo";
+  text = "builtins.foo";
   scope.builtins = builtins // { foo = 42; };
 }
 # => 42
 ```
+<!--{% end %}-->
 
 ### Evaluating a function from `scope`
 
 `scope` values can be functions, because application delegates to the real Nix
 evaluator:
 
+<!--{% code.examples.nix-eval-scope-fn %}-->
 ```nix
 (import ./nix).eval {
   text = "foo 3";
@@ -119,6 +132,7 @@ evaluator:
 }
 # => "foo"
 ```
+<!--{% end %}-->
 
 ## Supported language
 
@@ -303,15 +317,16 @@ operators do not chain: `1 < 2 < 3` is a syntax error.
 The test suite compares mostly against expected values, with some cases
 mirroring real Nix evaluations:
 
+<!--{% code.examples.nix-eval-tests %}-->
 ```sh
 nix-instantiate --eval --strict -E '(import ./nix/tests.nix).summary'
 ```
 
 Expected output:
-
 ```nix
-{ failed = [ ]; passed = 300; total = 300; }
+{ failed = []; passed = 300; total = 300; }
 ```
+<!--{% end %}-->
 
 Individual results, including `actual`/`expected` for failures, are available
 from `(import ./nix/tests.nix).run`.
@@ -324,17 +339,12 @@ from `(import ./nix/tests.nix).run`.
 | `parser.nix` | Nix grammar: expressions, operators, bindings, strings, paths. |
 | `ast.nix` | AST constructors. |
 | `eval.nix` | Lazy evaluator, thunks, forcing, operator semantics, path resolution. |
-| `env.nix` | Environment operations. |
-| `util.nix` | Thunk helpers. |
 | `builtins.nix` | Builtins FFI bridge and `scope.builtins` override. |
 | `tests.nix` | Test suite and summary. |
 | `fixtures/` | Small files used by `import` tests. |
 | `SPEC.md` | Behavioural specification. |
 | `PRD.md` | Goals and requirements. |
 | `TASKS.md` | Implementation checklist and progress. |
-
-The combinator foundation lives one directory up in `../parsec.nix` and
-`../lexer.nix`.
 
 ## License
 

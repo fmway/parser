@@ -1,18 +1,9 @@
+# TODO: move to ../utils/strings.nix
 let
   b = builtins;
+  inherit (import ../utils) min max reverseList;
 
   isSpace = c: c == " " || c == "\n" || c == "\t" || c == "\r";
-
-  min = a: c: if a < c then a else c;
-
-  max = a: c: if a > c then a else c;
-
-  # The items of the list, in the other order.
-  #
-  # Nix has no builtin for this, and the list is folded over, so that
-  # the work does not grow with the number of the items.
-  reverse = xs:
-    b.foldl' (acc: x: [ x ] ++ acc) [] xs;
 
   # The characters that mean something to the regex engine.
   regexSpecial = c:
@@ -64,7 +55,7 @@ let
           };
       res = b.foldl' step { offset = 0; rev = []; } parts;
     in
-      reverse res.rev;
+      reverseList res.rev;
 
   # The first place where `needle` occurs at or after `start`.
   #
@@ -166,7 +157,7 @@ let
           [ (index + 1) ([ { name = toString index; value = item; } ] ++ rest) ];
       res = b.foldl' step [ 0 [] ] items;
     in
-      reverse (b.elemAt res 1);
+      reverseList (b.elemAt res 1);
 
   # The index of the lines of the text.
   #
@@ -262,9 +253,6 @@ let
 in {
   inherit
     isSpace
-    min
-    max
-    reverse
     escapeRegex
     occurrences
     numbered

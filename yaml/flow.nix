@@ -19,8 +19,7 @@ let
   # In flow context, whitespace (including line breaks) and comments may
   # separate tokens.
   flowSpace = spaces.flowSpace;
-in rec {
-  
+in {
 
   # ------------------------------------------------------------------
   # Flow collections
@@ -30,7 +29,6 @@ in rec {
   flowSeq = node: s:
     let
       s1 = b.elemAt (stringY "[" s) 1;
-      s2 = b.elemAt (flowSpace s1) 1;
 
       # An entry, or the closing bracket.
       #
@@ -204,7 +202,6 @@ in rec {
   flowMap = node: s:
     let
       s1 = b.elemAt (stringY "{" s) 1;
-      s2 = b.elemAt (flowSpace s1) 1;
 
       # A key: a scalar, or a flow collection used as a complex key.
       #
@@ -275,8 +272,8 @@ in rec {
                           else node st5;
                       in if failed vres
                         then vres
-                        else [(k) (b.elemAt vres 0) (b.elemAt vres 1) st2.offset]
-                      else [(k) null st3 st2.offset]
+                        else [k (b.elemAt vres 0) (b.elemAt vres 1) st2.offset]
+                      else [k null st3 st2.offset]
                 else
                   let
                     kres = flowKey st1;
@@ -287,7 +284,7 @@ in rec {
                       st2 = b.elemAt kres 1;
                       st3 = b.elemAt (flowSpace st2) 1;
                     in if isAtEnd st3
-                      then [(k) null st3 st1.offset]
+                      then [k null st3 st1.offset]
                       else if b.substring st3.offset 1 st3.str == ":"
                         then let
                           st4 = st3 // { offset = st3.offset + 1; len = st3.len - 1; };
@@ -297,8 +294,8 @@ in rec {
                             else node st5;
                         in if failed vres
                           then vres
-                          else [(k) (b.elemAt vres 0) (b.elemAt vres 1) st1.offset]
-                        else [(k) null st3 st1.offset];
+                          else [k (b.elemAt vres 0) (b.elemAt vres 1) st1.offset]
+                        else [k null st3 st1.offset];
 
       # Collect the entries. The loop runs over a worklist rather than by
       # recursion, so that a long flow mapping does not overflow the

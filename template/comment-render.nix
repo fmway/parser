@@ -1,6 +1,7 @@
 { commentParser, helpers, nix, render, errors, strings, stringsPath, helpersPath }:
 let
   b = builtins;
+  inherit (import ../utils) reverseList;
 
   # ------------------------------------------------------------------
   # The file that holds the expressions of the edits
@@ -77,9 +78,9 @@ let
         };
       res = b.foldl' step { expressions = []; names = []; edits = []; } edits;
     in {
-      expressions = strings.reverse res.expressions;
-      names = strings.reverse res.names;
-      edits = strings.reverse res.edits;
+      expressions = reverseList res.expressions;
+      names = reverseList res.names;
+      edits = reverseList res.edits;
     };
 
   helperScope = context: {
@@ -129,8 +130,6 @@ let
       in
         render.renderValue value
     );
-
-  reverseList = xs: b.foldl' (acc: x: [ x ] ++ acc) [] xs;
 
   applyEdit = text: scope: cwd: adjustments: edit:
     let

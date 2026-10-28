@@ -1,7 +1,7 @@
 # Builtins bridge (FFI style)
 let
   b = builtins;
-in rec {
+in {
   # Get builtins, allow override via scope.builtins
   getBuiltins = scope:
     if scope ? builtins && b.isAttrs scope.builtins

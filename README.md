@@ -1,16 +1,17 @@
 # fmway/parser
 
-A collection of parsers written in pure Nix: YAML 1.2, Nix, and templates.
+A collection of parsers written in pure Nix.
 Built on top of [nix-parsec](https://github.com/kanwren/nix-parsec).
 
 > [!WARNING]
 > Most of the code was LLM-generated. Stability is not guaranteed.
 
 ## Parsers
-
-- `lib.yaml` — YAML 1.2 parser (`yaml/`)
-- `lib.nix` — Nix parser and evaluator (`nix/`)
-- `lib.template` — template engine (`template/`)
+<!--{% builtins.concatStringsSep "\n" (map (x: "- [lib.${x}](./${x})") (builtins.attrNames self.lib)) %}-->
+- [lib.nix](./nix)
+- [lib.template](./template)
+- [lib.yaml](./yaml)
+<!--{% end %}-->
 
 ## Usage
 
@@ -44,7 +45,7 @@ nix-instantiate --eval --strict -E '(import ./nix/tests.nix).summary'
 
 ## Examples
 
-Runnable examples live in `examples/yaml*/` (see their `parse.sh`).
+Runnable examples live in [examples](./examples) (see their `parse.sh`).
 
 ## Dependency
 

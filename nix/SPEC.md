@@ -147,5 +147,5 @@ The parser will produce an AST. Structure to be defined as we go (keep simple an
 - Handling all exotic syntax immediately - grow incrementally
 
 ## References
-- This repo: parsec.nix, lexer.nix (parser combinator foundation)
+- [nix-parsec](;ttps://github.com/kanwren/nix-parsec) (parser combinator foundation)
 - Nix language semantics (builtins)

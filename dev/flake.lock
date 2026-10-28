@@ -1,0 +1,57 @@
+{
+  "nodes": {
+    "fmway-lib": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793250160,
+        "narHash": "sha256-DZ3lLMtarw6dbMi4bW7TC8K4MO5KAys4lHIpM1NyUYA=",
+        "owner": "fmway",
+        "repo": "lib",
+        "rev": "a4ec7b56e10430c48004e3ef7aad523c57f9b6b6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmway",
+        "repo": "lib",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1784872115,
+        "narHash": "sha256-+GlACcQGqWOKfXKmy+KXCvbl7lKTmM5mZM16zmwTCic=",
+        "rev": "335f0738cb2fa9708f3f428e39d2eae975d1338d",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixpkgs/nixpkgs-26.11pre1040892.335f0738cb2f/nixexprs.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz"
+      }
+    },
+    "parser": {
+      "locked": {
+        "path": "../",
+        "type": "path"
+      },
+      "original": {
+        "path": "../",
+        "type": "path"
+      },
+      "parent": []
+    },
+    "root": {
+      "inputs": {
+        "fmway-lib": "fmway-lib",
+        "nixpkgs": "nixpkgs",
+        "parser": "parser"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

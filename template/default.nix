@@ -1,7 +1,8 @@
 let
+  utils = import ../utils;
   nix = import ../nix;
   strings = import ./string.nix;
-  errors = import ./error.nix {};
+  errors = import ./error.nix;
   parser = import ./parser.nix { nixParser = nix.parser; inherit strings; };
   render = import ./render.nix { inherit nix errors; };
   commentParser = import ./comment-parser.nix {
@@ -51,6 +52,7 @@ let
         inherit (args) prefix postfix;
         inherit (resolve args) text;
       };
+    mkScript = utils.mkScript "gen-template.sh" eval;
   };
 
   v2 = let
@@ -92,6 +94,7 @@ let
         else commentRender.renderTemplateIFD parsed r.cwd scope;
   in {
     inherit safeParse parse eval;
+    mkScript = utils.mkScript "gen-template.sh" eval;
   };
 in {
   inherit (v2) parse eval safeParse;

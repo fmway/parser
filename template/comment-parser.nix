@@ -1,6 +1,7 @@
 { nixParser, strings }:
 let
   b = builtins;
+  inherit (import ../utils) min;
 
   markerKinds = [
     { type = "inline"; open = "{<"; close = ">}"; }
@@ -362,7 +363,7 @@ let
     then
       let
         last = b.elemAt node.directives (b.length node.directives - 1);
-        nextStart = strings.min (b.stringLength text) ((index.end last.wrapperEnd) + 1);
+        nextStart = min (b.stringLength text) ((index.end last.wrapperEnd) + 1);
       in [ {
         type = "nextChain";
         asts = node.asts;
@@ -375,7 +376,7 @@ let
     else if node.type == "next"
     then
       let
-        nextStart = strings.min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
+        nextStart = min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
       in [ {
         type = "next";
         targetStart = nextStart;
@@ -388,7 +389,7 @@ let
     else if node.type == "rawNext"
     then
       let
-        nextStart = strings.min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
+        nextStart = min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
       in [ {
         type = "rawNext";
         targetStart = nextStart;
@@ -406,7 +407,7 @@ let
     { open = "-- "; close = ""; }
     { open = "; "; close = ""; }
     { open = "/* "; close = " */"; }
-    { open = "<!-- "; close = " -->"; }
+    { open = "<!--"; close = "-->"; }
   ];
 
   # The style whose first directive comes first.

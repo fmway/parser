@@ -431,8 +431,7 @@ let
   # Parse a single YAML document with the default options.
   parseDefault = str: parse { } str;
 
-in
-rec {
+in {
   inherit safeParse safeParseStream parse parseDefault toValue toValueWithMerge toValueWith errorMessage;
 
   # The tags of the core schema, and the handlers of the tags.

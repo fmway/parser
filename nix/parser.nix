@@ -1,6 +1,7 @@
 { parsec, lexer, ast }:
 with parsec;
 let
+  inherit (import ../utils) reverseList;
   mkParser = terminator:
     let
       b = builtins;
@@ -302,8 +303,6 @@ let
       )
     );
   
-  reverseList = xs: b.foldl' (acc: x: [x] ++ acc) [] xs;
-  
   mergeStringParts = parts:
     let
       step = acc: p:
@@ -339,12 +338,6 @@ let
   ident = bind identRaw (s:
     if b.elem s reserved then fail else pure (ast.mkVar s)
   );
-  
-  # keywords
-  boolOrNull = alt 
-    (label "true" (fmap (_: ast.mkLit true) (symbol "true")))
-    (alt (label "false" (fmap (_: ast.mkLit false) (symbol "false")))
-         (label "null" (fmap (_: ast.mkLit null) (symbol "null"))));
   
   # bindings: `path.to.name = expr;`, `inherit names;`, `inherit (expr) names;`
   attrName = bind identRaw (s:

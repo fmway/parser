@@ -4,17 +4,14 @@ let
   lexerMod = (import ../deps.nix).lexer;
   
   ast = import ./ast.nix;
-  util = import ./util.nix;
-  env = import ./env.nix;
   builtinsBridge = import ./builtins.nix;
   parserMod = import ./parser.nix { inherit parsec ast; lexer = lexerMod; };
-  evalMod = import ./eval.nix { inherit util env builtinsBridge; parser = parserMod; };
+  evalMod = import ./eval.nix { inherit builtinsBridge; parser = parserMod; };
   
   eval = expr:
-    if builtins.isString expr
-    then evalMod.evalString { text = expr; }
-    else if builtins.isAttrs expr
-    then 
+    if builtins.isString expr then
+      evalMod.evalString { text = expr; }
+    else if builtins.isAttrs expr then
       let
         args = expr;
         text = args.text;
@@ -24,8 +21,7 @@ let
     else throw "eval expects string or attrset";
 
   evalAst = args:
-    if builtins.isAttrs args
-    then
+    if builtins.isAttrs args then
       let
         ast = args.ast;
         cwd = args.cwd or (dirOf (builtins.unsafeGetAttrPos "ast" args).file);
@@ -34,8 +30,7 @@ let
     else throw "evalAst expects attrset";
 
   evalAstSafe = args:
-    if builtins.isAttrs args
-    then
+    if builtins.isAttrs args then
       let
         ast = args.ast;
         cwd = args.cwd or (dirOf (builtins.unsafeGetAttrPos "ast" args).file);

@@ -24,13 +24,11 @@
 
 { state, spaces, scalars, flowMod, blocks, anchors }:
 
-with state;
-
 let
   b = builtins;
 
   # The raw node parsers.
-  raw = rec {
+  raw = {
     # A node in flow context, with any properties handled.
     flow = indent: s:
       anchors.withProperties raw.flowContent indent spaces.flowSpace s;
@@ -62,26 +60,7 @@ let
       blocks.blockNode raw indent s;
   };
 
-  # The node parsers, including property handling. These are the ones
-  # the document parser uses.
-  node = rec {
-    # A node in block context.
-    block = indent: s:
-      blocks.blockNode raw indent s;
-
-    # A node in flow context. The indent is not significant in flow
-    # context, but it is still threaded through for uniformity.
-    flow = indent: s:
-      anchors.withProperties raw.flowContent indent spaces.flowSpace s;
-  };
-
-  # The node parser that the block and flow parsers use for nested
-  # content. Nested content may carry its own properties, so this is
-  # the "raw" parser.
-  nested = raw;
-
-in
-rec {
+in {
   # The node of a document, which has no enclosing block collection.
   documentNode = blocks.documentNode raw;
 }

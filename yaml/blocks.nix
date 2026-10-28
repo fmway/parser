@@ -107,7 +107,6 @@ let
     let
       str = s.str;
       # Only the line that the state is on is looked at.
-      ls = lineStartOf str s.offset;
       le = scalars.nextLineAt str s.offset (s.offset + s.len);
       max = if le > s.offset + s.len then s.offset + s.len else le;
       at = i: b.substring i 1 str;

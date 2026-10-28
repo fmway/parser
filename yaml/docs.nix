@@ -16,7 +16,6 @@ with state;
 
 let
   b = builtins;
-  concat = b.concatStringsSep "";
 
   # A document start marker: "---" at the start of a line.
   atDocStart = s:

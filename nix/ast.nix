@@ -1,5 +1,5 @@
 # AST node constructors
-rec {
+{
   mkLit = v: { type = "lit"; value = v; };
   mkVar = name: { type = "var"; name = name; };
   mkApp = fn: arg: { type = "app"; inherit fn arg; };

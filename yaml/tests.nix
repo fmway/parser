@@ -1063,8 +1063,7 @@ let
     failed = b.length failures;
   };
 
-in
-rec {
+in {
   inherit summary failures builtinResults suiteResults;
 
   # A short report, useful when running the tests by hand.

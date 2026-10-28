@@ -5,7 +5,7 @@
 - [x] Create `SPEC.md`
 - [x] Create `PRD.md`
 - [x] Create `TASKS.md`
-- [x] Create base file structure (default.nix, ast.nix, util.nix, env.nix, builtins.nix, lexer.nix, parser.nix, eval.nix, tests.nix)
+- [x] Create base file structure (default.nix, ast.nix, builtins.nix, parser.nix, eval.nix, tests.nix)
 - [x] Add basic README in nix/ if helpful
 
 ## Phase 1: Lexer & Parser Foundation

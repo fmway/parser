@@ -1,4 +1,4 @@
-{ parser, util, env, builtinsBridge }:
+{ parser, builtinsBridge }:
 let
   b = builtins;
 
@@ -291,10 +291,6 @@ let
       else if t == "or" then andMsg (check expr.sel) (check expr.default)
       else if t == "hasattr" then andMsg (check expr.base) (checkPathMessage names hasWith expr.path)
       else null;
-
-  checkExpr = names: hasWith: expr:
-    let r = checkExprMessage names hasWith expr;
-    in if r == null then true else throw r;
 
   evalBinOp = op: left: right: env: bb:
     let
