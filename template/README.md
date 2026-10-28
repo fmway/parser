@@ -65,8 +65,8 @@ a caret under the failing character.
 
 Measured with `nix eval` on a 1000-line template containing 1000 interpolations:
 
-- new v1: about 0.54s
-- previous `fmway.parse`: about 8.83s
+- new v1: about 0.83s (hyperfine)
+- previous [fmway.parse.v1](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix): about 1.15s (hyperfine)
 
 The previous implementation is slower mainly because it rescans the whole document
 with regexes and materializes/imports a generated Nix file (IFD). The new
@@ -75,8 +75,8 @@ implementation parses into an AST and evaluates it directly.
 For very small templates the difference is negligible.
 
 v2 comment-driven transforms are different: on a 300-line file with 100 blocks,
-the new implementation took about 8.93s, while the previous IFD/regex parser
-took about 0.072s. v2 pays for evaluating expressions with the self-hosted Nix
+the new implementation took about 0.745s, while the previous IFD/regex parser
+took about 0.271s. v2 pays for evaluating expressions with the self-hosted Nix
 evaluator. The trade-off is no IFD and structured diagnostics, not raw speed.
 
 ## Notes
