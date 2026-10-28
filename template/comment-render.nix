@@ -77,12 +77,16 @@ let
           in
             go 0 current
         else transformValue edit.ast current cwd scope edit.expressionStart text;
+      finalReplacement =
+        if edit.type == "blockOpen" && current == "" && replacement != "" && !(b.substring (b.stringLength replacement - 1) 1 replacement == "\n")
+        then replacement + "\n"
+        else replacement;
       updated =
         b.substring 0 edit.targetStart text
-        + replacement
+        + finalReplacement
         + b.substring adjustedEnd (b.stringLength text - adjustedEnd) text;
       originalLength = edit.targetEnd - edit.targetStart;
-      delta = b.stringLength replacement - originalLength;
+      delta = b.stringLength finalReplacement - originalLength;
     in {
       text = updated;
       adjustments = adjustments ++ [ {

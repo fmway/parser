@@ -258,15 +258,25 @@ let
 
   collectEdits = text: node: depth:
     if node.type == "blockOpen" || node.type == "rawBlock"
-    then [ {
-      type = node.type;
-      targetStart = node.bodyStart;
-      targetEnd = node.bodyEnd;
-      expression = node.expression;
-      ast = node.ast;
-      expressionStart = node.expressionStart;
-      inherit depth;
-    } ] ++ b.concatMap (child: collectEdits text child (depth + 1)) node.children
+    then
+      let
+        emptyBody = node.bodyStart >= node.bodyEnd;
+        targetStart =
+          if emptyBody
+          then node.bodyStart
+          else node.bodyStart;
+        targetEnd =
+          if emptyBody
+          then node.bodyStart
+          else (if node.bodyEnd > node.bodyStart && b.substring (node.bodyEnd - 1) 1 text == "\n" then node.bodyEnd - 1 else node.bodyEnd);
+      in [ {
+        type = node.type;
+        inherit targetStart targetEnd;
+        expression = node.expression;
+        ast = node.ast;
+        expressionStart = node.expressionStart;
+        inherit depth;
+      } ] ++ b.concatMap (child: collectEdits text child (depth + 1)) node.children
     else if node.type == "inline"
     then
       let
