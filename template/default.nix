@@ -2,7 +2,7 @@ let
   nix = import ../nix;
   strings = import ./string.nix;
   errors = import ./error.nix {};
-  parser = import ./parser.nix { nixParser = nix.parser; };
+  parser = import ./parser.nix { nixParser = nix.parser; inherit strings; };
   render = import ./render.nix { inherit nix errors; };
   commentParser = import ./comment-parser.nix {
     nixParser = nix.parser;

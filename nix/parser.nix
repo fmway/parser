@@ -44,12 +44,24 @@ let
   lexeme = lexer.lexeme spaces;
   symbol = lexer.symbol spaces;
   
-  isDigit = c: b.match "[0-9]" c != null;
-  isIdStart = c: b.match "[a-zA-Z_]" c != null;
-  isIdChar = c: b.match "[a-zA-Z0-9_'-]" c != null;
-  isUriSchemeStart = c: b.match "[a-zA-Z]" c != null;
-  isUriSchemeChar = c: b.match "[a-zA-Z0-9+.-]" c != null;
-  isUriBodyChar = c: b.match "[a-zA-Z0-9%/?:@&=+$,_.!~*'-]" c != null;
+  # The character classes.
+  #
+  # These are written out as comparisons, and not as regular
+  # expressions: a regular expression has to be compiled every time it
+  # is used, and these are used for every character of every token.
+  isDigit = c: c >= "0" && c <= "9";
+  isLower = c: c >= "a" && c <= "z";
+  isUpper = c: c >= "A" && c <= "Z";
+  isAlpha = c: isLower c || isUpper c;
+  isIdStart = c: isAlpha c || c == "_";
+  isIdChar = c: isAlpha c || isDigit c || c == "_" || c == "'" || c == "-";
+  isUriSchemeStart = c: isAlpha c;
+  isUriSchemeChar = c: isAlpha c || isDigit c || c == "+" || c == "." || c == "-";
+  isUriBodyChar = c:
+    isAlpha c || isDigit c
+    || c == "%" || c == "/" || c == "?" || c == ":" || c == "@" || c == "&"
+    || c == "=" || c == "+" || c == "$" || c == "," || c == "_" || c == "."
+    || c == "!" || c == "~" || c == "*" || c == "'" || c == "-";
   
   # Extract all nodes of a parsec error tree. Each node may carry an offset,
   # a message, and a context label.
@@ -158,7 +170,7 @@ let
   ));
   
   # path literal (relative/absolute), optionally with interpolation
-  isPathChar = c: b.match "[a-zA-Z0-9._+/-]" c != null;
+  isPathChar = c: isAlpha c || isDigit c || c == "." || c == "_" || c == "/" || c == "+" || c == "-";
   isPathSegmentChar = c: isPathChar c && c != "/";
   
   pathPiece = alt
