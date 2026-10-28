@@ -358,6 +358,7 @@ let
       in [ {
         type = "nextChain";
         asts = node.asts;
+        expressions = b.map (d: d.expression) node.directives;
         expressionStarts = b.map (d: d.expressionStart) node.directives;
         targetStart = nextStart;
         targetEnd = strings.lineEnd text nextStart;

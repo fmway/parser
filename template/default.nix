@@ -11,6 +11,8 @@ let
   helpers = import ./helpers.nix { inherit strings; };
   commentRender = import ./comment-render.nix {
     inherit commentParser helpers nix render errors;
+    stringsPath = toString ./string.nix;
+    helpersPath = toString ./helpers.nix;
   };
 
   b = builtins;
@@ -71,6 +73,7 @@ let
       let
         r = resolve args;
         scope = args.scope or {};
+        useNixParser = args.useNixParser or true;
         interpolated =
           if args.interpolation or null == null
           then r.text
@@ -84,7 +87,9 @@ let
           commentStyle = args.commentStyle or "auto";
         };
       in
-        commentRender.renderTemplate parsed r.cwd scope;
+        if useNixParser
+        then commentRender.renderTemplate parsed r.cwd scope
+        else commentRender.renderTemplateIFD parsed r.cwd scope;
   in {
     inherit safeParse parse eval;
   };

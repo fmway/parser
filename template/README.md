@@ -42,6 +42,19 @@ similar to Yolk. Explicit form:
 commentStyle = { open = "# "; close = ""; };
 ```
 
+By default expressions are evaluated with the self-hosted Nix evaluator
+(`useNixParser = true`), which needs no IFD. Set `useNixParser = false` to
+evaluate them with the host evaluator through a generated file instead, which
+is faster on large templates at the cost of IFD:
+
+```nix
+template.v2.eval {
+  file = ./README.md;
+  scope.code = import ./dev/code.nix;
+  useNixParser = false;
+}
+```
+
 Supported marker forms:
 
 - `{< expr >}`: transform text before the marker on the same line.
@@ -78,6 +91,20 @@ v2 comment-driven transforms are different: on a 300-line file with 100 blocks,
 the new implementation took about 0.745s, while the previous IFD/regex parser
 took about 0.271s. v2 pays for evaluating expressions with the self-hosted Nix
 evaluator. The trade-off is no IFD and structured diagnostics, not raw speed.
+
+On the YAML README (16 markers, real code examples) the three approaches measure
+(hyperfine, 5 runs, cold eval cache):
+
+- self-hosted (`useNixParser = true`): 2.289 s ± 0.039 s
+- IFD (`useNixParser = false`): 2.264 s ± 0.066 s
+- previous IFD/regex parser (`github:fmway/lib`): 1.313 s ± 0.024 s
+
+The self-hosted and IFD paths now agree on output; IFD avoids the self-hosted
+evaluator's overhead on trivial expressions but both are still dominated by
+evaluating the embedded code examples. The previous parser stays faster because
+it batches all markers into a single generated file (one import), whereas this
+implementation evaluates one marker at a time; batching here overflows the
+stack on inputs of this size.
 
 ## Notes
 
