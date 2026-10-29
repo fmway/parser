@@ -10,7 +10,7 @@ let
   };
   helpers = import ./helpers.nix { inherit strings; };
   commentRender = import ./comment-render.nix {
-    inherit commentParser helpers nix render errors;
+    inherit commentParser helpers nix render errors strings;
     stringsPath = toString ./string.nix;
     helpersPath = toString ./helpers.nix;
   };

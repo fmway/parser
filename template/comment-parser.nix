@@ -15,16 +15,10 @@ let
       if found == [] then null else b.head found;
 
   allSpace = text:
-    let
-      length = b.stringLength text;
-      go = offset:
-        if offset >= length
-        then true
-        else if strings.isSpace (b.substring offset 1 text)
-        then go (offset + 1)
-        else false;
-    in
-      go 0;
+    # The text is searched for a character that is not a space, and the
+    # search does not use the stack, so that a long text does not
+    # overflow it.
+    b.length (b.split "([^ \t\r\n])" text) == 1;
 
   lineColumn = text: offset:
     let
@@ -82,7 +76,10 @@ let
   # The old code parsed the expression again for every style it tried,
   # which was the bulk of the work.
   # ------------------------------------------------------------------
-  parseMarkers = text: markers:
+  parseMarkers = index: markers:
+    let
+      text = index.text;
+    in
     b.foldl' (acc: marker:
       let
         kind = kindFor marker.open;
@@ -92,15 +89,19 @@ let
           terminator = kind.close;
           text = fragment;
         };
+        # The line that the marker is on is worked out here, and not
+        # in the scan of a comment style, so that it is worked out once
+        # for the marker and not once for every style that is tried.
+        lineStart = index.start marker.offset;
       in
         if parsed.type == "error"
         then acc ++ [ {
-          inherit marker kind;
+          inherit marker kind lineStart;
           failed = true;
           error = parsed.value;
         } ]
         else acc ++ [ {
-          inherit marker kind;
+          inherit marker kind lineStart;
           failed = false;
           expression = parsed.value.expression;
           ast = parsed.value.ast;
@@ -117,11 +118,13 @@ let
   # but spaces between them. The search for it is kept inside the line,
   # so it costs the length of the line and not the length of the text.
   # ------------------------------------------------------------------
-  wrapperStart = text: commentStyle: markerIndex:
+  wrapperStart = index: commentStyle: parsed:
     let
+      text = index.text;
+      markerIndex = parsed.marker.offset;
       open = commentStyle.open;
       openLength = b.stringLength open;
-      line = strings.lineStart text markerIndex;
+      line = parsed.lineStart;
       before = b.substring line (markerIndex - line) text;
       relative = strings.lastIndexOf open before (b.stringLength before - openLength);
     in
@@ -182,8 +185,9 @@ let
   # The loop is a fold over the markers, and not a recursion, so the
   # number of markers does not affect the depth of the stack.
   # ------------------------------------------------------------------
-  scan = text: commentStyle: parsedMarkers:
+  scan = index: commentStyle: parsedMarkers:
     let
+      text = index.text;
       step = acc: parsed:
         if acc.failed
         then acc
@@ -191,7 +195,7 @@ let
         then acc
         else
           let
-            wrapper = wrapperStart text commentStyle parsed.marker.offset;
+            wrapper = wrapperStart index commentStyle parsed;
           in
             if wrapper == null
             then acc // {
@@ -255,8 +259,9 @@ let
   #
   # The loop is a fold over the directives, and not a recursion.
   # ------------------------------------------------------------------
-  pairDirectives = text: directives:
+  pairDirectives = index: directives:
     let
+      text = index.text;
       step = acc: directive:
         if acc.error != null
         then acc
@@ -270,9 +275,9 @@ let
             let
               open = b.head acc.stack;
               stackRest = b.tail acc.stack;
-              openingLineEnd = strings.lineEnd text open.wrapperEnd;
+              openingLineEnd = index.end open.wrapperEnd;
               bodyStart = if openingLineEnd < b.stringLength text then openingLineEnd + 1 else openingLineEnd;
-              bodyEnd = strings.lineStart text directive.wrapperStart;
+              bodyEnd = index.start directive.wrapperStart;
               completed = open // {
                 end = directive;
                 inherit bodyStart bodyEnd;
@@ -317,7 +322,10 @@ let
         roots = res.roots;
       };
 
-  collectEdits = text: node: depth:
+  collectEdits = index: node: depth:
+    let
+      text = index.text;
+    in
     if node.type == "blockOpen" || node.type == "rawBlock"
     then
       let
@@ -334,12 +342,12 @@ let
         ast = node.ast;
         expressionStart = node.expressionStart;
         inherit depth;
-      } ] ++ b.concatMap (child: collectEdits text child (depth + 1)) node.children
+      } ] ++ b.concatMap (child: collectEdits index child (depth + 1)) node.children
     else if node.type == "inline"
     then
       let
-        trimmedEnd = strings.lastNonSpace text node.wrapperStart;
-        lineStart = strings.lineStart text node.wrapperStart;
+        lineStart = index.start node.wrapperStart;
+        trimmedEnd = strings.lastNonSpaceIn text lineStart node.wrapperStart;
         targetEnd = if trimmedEnd < lineStart then lineStart else trimmedEnd;
       in [ {
         type = "inline";
@@ -354,24 +362,24 @@ let
     then
       let
         last = b.elemAt node.directives (b.length node.directives - 1);
-        nextStart = strings.min (b.stringLength text) ((strings.lineEnd text last.wrapperEnd) + 1);
+        nextStart = strings.min (b.stringLength text) ((index.end last.wrapperEnd) + 1);
       in [ {
         type = "nextChain";
         asts = node.asts;
         expressions = b.map (d: d.expression) node.directives;
         expressionStarts = b.map (d: d.expressionStart) node.directives;
         targetStart = nextStart;
-        targetEnd = strings.lineEnd text nextStart;
+        targetEnd = index.end nextStart;
         inherit depth;
       } ]
     else if node.type == "next"
     then
       let
-        nextStart = strings.min (b.stringLength text) ((strings.lineEnd text node.wrapperEnd) + 1);
+        nextStart = strings.min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
       in [ {
         type = "next";
         targetStart = nextStart;
-        targetEnd = strings.lineEnd text nextStart;
+        targetEnd = index.end nextStart;
         expression = node.expression;
         ast = node.ast;
         expressionStart = node.expressionStart;
@@ -380,11 +388,11 @@ let
     else if node.type == "rawNext"
     then
       let
-        nextStart = strings.min (b.stringLength text) ((strings.lineEnd text node.wrapperEnd) + 1);
+        nextStart = strings.min (b.stringLength text) ((index.end node.wrapperEnd) + 1);
       in [ {
         type = "rawNext";
         targetStart = nextStart;
-        targetEnd = strings.lineEnd text nextStart;
+        targetEnd = index.end nextStart;
         expression = node.expression;
         ast = node.ast;
         expressionStart = node.expressionStart;
@@ -402,15 +410,18 @@ let
   ];
 
   # The style whose first directive comes first.
-  pickStyle = text: parsedMarkers: styles:
+  #
+  # The scan of the text with the style is given back with it, so that
+  # the scan of the style that is picked is not done a second time.
+  pickStyle = index: parsedMarkers: styles:
     let
       candidates = b.map (style:
         let
-          scanned = scan text style parsedMarkers;
+          scanned = scan index style parsedMarkers;
         in
           if scanned.type == "success" && scanned.directives != []
           then {
-            inherit style;
+            inherit style scanned;
             index = (b.head scanned.directives).markerStart;
           }
           else null
@@ -419,32 +430,36 @@ let
     in
       if present == []
       then null
-      else (b.head (b.sort (a: c: a.index < c.index) present)).style;
+      else (b.head (b.sort (a: c: a.index < c.index) present));
 
   defaultCommentStyle = { open = "# "; close = ""; };
 
   inferCommentStyle = text:
     let
+      index = strings.lineIndex text;
       markers = findMarkers text;
-      parsedMarkers = parseMarkers text markers;
+      parsedMarkers = parseMarkers index markers;
     in
-      inferCommentStyleOf text parsedMarkers;
+      inferCommentStyleOf index parsedMarkers;
 
-  inferCommentStyleOf = text: parsedMarkers:
+  inferCommentStyleOf = index: parsedMarkers:
     let
-      style = pickStyle text parsedMarkers knownCommentStyles;
+      style = pickStyle index parsedMarkers knownCommentStyles;
     in
-      if style == null then defaultCommentStyle else style;
+      if style == null then defaultCommentStyle else style.style;
 
-  resolveCommentStyleOf = text: parsedMarkers: requested:
+  resolveCommentStyleOf = index: parsedMarkers: requested:
     if requested == null || requested == "auto"
-    then inferCommentStyleOf text parsedMarkers
+    then inferCommentStyleOf index parsedMarkers
     else if b.isAttrs requested
     then requested
     else defaultCommentStyle;
 
   resolveCommentStyle = text: requested:
-    resolveCommentStyleOf text (parseMarkers text (findMarkers text)) requested;
+    let
+      index = strings.lineIndex text;
+    in
+      resolveCommentStyleOf index (parseMarkers index (findMarkers text)) requested;
 
   makeNextChain = chain:
     if b.length chain == 1
@@ -459,16 +474,16 @@ let
       asts = b.map (d: d.ast) chain;
     };
 
-  adjacentNext = text: a: c:
-    strings.lineStart text c.markerStart
-    == strings.lineEnd text a.wrapperEnd + 1;
+  adjacentNext = index: a: c:
+    index.start c.markerStart
+    == index.end a.wrapperEnd + 1;
 
   # ------------------------------------------------------------------
   # Grouping the markers that follow each other
   #
   # The loop is a fold over the directives, and not a recursion.
   # ------------------------------------------------------------------
-  groupNextChains = text: directives:
+  groupNextChains = index: directives:
     let
       step = acc: directive:
         let
@@ -480,7 +495,7 @@ let
             if directive.type == "next"
             then acc // { chain = [ directive ]; }
             else acc // { chain = []; done = acc.done ++ [ directive ]; }
-          else if directive.type == "next" && adjacentNext text last directive
+          else if directive.type == "next" && adjacentNext index last directive
           then acc // { chain = chain ++ [ directive ]; }
           else if directive.type == "next"
           then {
@@ -503,9 +518,24 @@ let
     }
     else
       let
+        # The index of the lines of the text is made once, and every
+        # search for a line uses it, so that no search walks over the
+        # text again.
+        index = strings.lineIndex text;
         markers = findMarkers text;
-        parsedMarkers = parseMarkers text markers;
-        resolved = resolveCommentStyleOf text parsedMarkers commentStyle;
+        parsedMarkers = parseMarkers index markers;
+        # The style is looked for only when it is not asked for, and
+        # the scan that comes with it is the scan that is used.
+        picked =
+          if commentStyle == null || commentStyle == "auto"
+          then pickStyle index parsedMarkers knownCommentStyles
+          else null;
+        resolved =
+          if picked != null
+          then picked.style
+          else if b.isAttrs commentStyle
+          then commentStyle
+          else defaultCommentStyle;
       in
         if !b.isAttrs resolved || !b.isString resolved.open || resolved.open == ""
         then {
@@ -519,14 +549,17 @@ let
         }
         else
           let
-            scanned = scan text resolved parsedMarkers;
+            scanned =
+              if picked != null
+              then picked.scanned
+              else scan index resolved parsedMarkers;
           in
             if scanned.type == "error"
             then { type = "error"; value = scanned.error; }
             else
               let
-                grouped = groupNextChains text scanned.directives;
-                paired = pairDirectives text grouped;
+                grouped = groupNextChains index scanned.directives;
+                paired = pairDirectives index grouped;
               in
                 if paired.type == "error"
                 then { type = "error"; value = paired.error; }
@@ -534,7 +567,7 @@ let
                   type = "success";
                   value = {
                     type = "comment-template";
-                    inherit text;
+                    inherit text index;
                     commentStyle = resolved;
                     directives = grouped;
                     roots = paired.roots;

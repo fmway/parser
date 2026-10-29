@@ -87,24 +87,30 @@ implementation parses into an AST and evaluates it directly.
 
 For very small templates the difference is negligible.
 
-v2 comment-driven transforms are different: on a 300-line file with 100 blocks,
-the new implementation took about 0.745s, while the previous IFD/regex parser
-took about 0.271s. v2 pays for evaluating expressions with the self-hosted Nix
-evaluator. The trade-off is no IFD and structured diagnostics, not raw speed.
+v2 comment-driven transforms work in the same shape: the markers are found in
+one pass over the text, the lines of the text are indexed once, and all the
+expressions go into one generated file that is imported once.
 
-On the YAML README (16 markers, real code examples) the three approaches measure
-(hyperfine, 5 runs, cold eval cache):
+On the YAML README (492 lines, 32 markers, real code examples) the three
+approaches measure the same, because most of the time goes into evaluating
+the embedded code examples (about 1.2 s of the 1.35 s):
 
-- self-hosted (`useNixParser = true`): 2.289 s ± 0.039 s
-- IFD (`useNixParser = false`): 2.264 s ± 0.066 s
-- previous IFD/regex parser (`github:fmway/lib`): 1.313 s ± 0.024 s
+- self-hosted (`useNixParser = true`): about 1.33 s
+- IFD (`useNixParser = false`): about 1.34 s
+- previous IFD/regex parser (`github:fmway/lib`): about 1.35 s
 
-The self-hosted and IFD paths now agree on output; IFD avoids the self-hosted
-evaluator's overhead on trivial expressions but both are still dominated by
-evaluating the embedded code examples. The previous parser stays faster because
-it batches all markers into a single generated file (one import), whereas this
-implementation evaluates one marker at a time; batching here overflows the
-stack on inputs of this size.
+With the code examples replaced by cheap ones, so that only the parsing and
+the rendering are measured, the new parser is twice as fast:
+
+- self-hosted: about 0.12 s
+- IFD: about 0.11 s
+- previous IFD/regex parser: about 0.24 s
+
+On a 300-line file with 100 blocks all three measure about 0.24 s.
+
+The new parser also grows better: on a file ten times the size of the YAML
+README the previous parser fails with "stack overflow (possible infinite
+recursion)", while the new parser takes about 1.9 s.
 
 ## Notes
 

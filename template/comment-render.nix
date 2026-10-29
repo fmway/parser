@@ -1,37 +1,86 @@
-{ commentParser, helpers, nix, render, errors, stringsPath, helpersPath }:
+{ commentParser, helpers, nix, render, errors, strings, stringsPath, helpersPath }:
 let
   b = builtins;
 
-  toJsonString = text:
-    "\"" + (b.replaceStrings [ "\\" "\"" "\n" "\r" "\t" ] [ "\\\\" "\\\"" "\\n" "\\r" "\\t" ] text) + "\"";
-
-  evalExprIFD = expr: current: cwd: scope:
+  # ------------------------------------------------------------------
+  # The file that holds the expressions of the edits
+  #
+  # All the expressions go into one file, and the file is imported
+  # once, and not once for every expression. The old parser works in
+  # the same way, and a file for every expression costs a write to the
+  # store and a read of it for every expression.
+  #
+  # Every expression is a function of the text that it works on, so
+  # that the text can be given to it when the edit is done, and not
+  # when the file is imported.
+  # ------------------------------------------------------------------
+  exprFile = expressions:
     let
-      ctxJson = toJsonString current;
-      ctxNix = b.replaceStrings [ "\\" "\"" ] [ "\\\\" "\\\"" ] ctxJson;
-      fileContent = ''
+      count = b.length expressions;
+      body = b.concatStringsSep "\n" (b.genList (i:
+        let
+          expr = b.elemAt expressions i;
+        in
+          ''
+            expr-${toString i} = context:
+              with helpersFor context;
+              (let v = ${expr}; in if builtins.isFunction v then v context else v);
+          ''
+      ) count);
+    in
+      ''
         var: with var;
         let
-          context = builtins.fromJSON "${ctxNix}";
           strings = import "${stringsPath}";
           helpers = import "${helpersPath}" { inherit strings; };
-          replace_quoted = replacement: helpers.replaceQuoted context replacement;
-          replace_between = replacement: start: end: helpers.replaceBetween context replacement start end;
-          replace_in = replacement: delimiter: helpers.replaceBetween context replacement delimiter delimiter;
-          replace_value = replacement: helpers.replaceValue context replacement;
-          replace_color = replacement: helpers.replaceColor context replacement;
-          replace_many = functions: builtins.foldl' (value: function: function value) context functions;
-          rq = replace_quoted;
-          rbet = replace_between;
-          rin = replace_in;
-          rv = replace_value;
-          rcol = replace_color;
-          rm = replace_many;
-        in with var; (let v = ${expr}; in if builtins.isFunction v then v context else v)
+          helpersFor = context: {
+            replace_quoted = replacement: helpers.replaceQuoted context replacement;
+            replace_between = replacement: start: end: helpers.replaceBetween context replacement start end;
+            replace_in = replacement: delimiter: helpers.replaceBetween context replacement delimiter delimiter;
+            replace_value = replacement: helpers.replaceValue context replacement;
+            replace_color = replacement: helpers.replaceColor context replacement;
+            replace_many = functions: builtins.foldl' (value: function: function value) context functions;
+            rq = replace_quoted;
+            rbet = replace_between;
+            rin = replace_in;
+            rv = replace_value;
+            rcol = replace_color;
+            rm = replace_many;
+          };
+        in {
+          ${body}
+        }
       '';
-      file = b.toFile "template-expr.nix" fileContent;
-    in
-      import file ({ cwd = cwd; } // scope);
+
+  # The expressions of the edits, and the place of every edit in them.
+  #
+  # The edits are sorted from the end of the text to its start, and
+  # every expression of an edit is given a number of its own.
+  #
+  # The edits are folded over in the reverse order and turned around at
+  # the end, so that the work does not grow with the number of the
+  # edits.
+  indexExpressions = edits:
+    let
+      step = acc: edit:
+        let
+          first = b.length acc.expressions;
+          own =
+            if edit.type == "nextChain"
+            then edit.expressions
+            else [ edit.expression ];
+          expressionNames = b.genList (i: "expr-${toString (first + i)}") (b.length own);
+        in {
+          expressions = own ++ acc.expressions;
+          names = expressionNames ++ acc.names;
+          edits = [ (edit // { inherit expressionNames; }) ] ++ acc.edits;
+        };
+      res = b.foldl' step { expressions = []; names = []; edits = []; } edits;
+    in {
+      expressions = strings.reverse res.expressions;
+      names = strings.reverse res.names;
+      edits = strings.reverse res.edits;
+    };
 
   helperScope = context: {
     replace_quoted = replacement: helpers.replaceQuoted context replacement;
@@ -47,6 +96,7 @@ let
     rcol = replacement: helpers.replaceColor context replacement;
     rm = functions: b.foldl' (value: function: function value) context functions;
   };
+
 
   scopeFor = scope: context:
     helperScope context // scope // { inherit context; };
@@ -128,7 +178,7 @@ let
 
   renderTemplate = ast: cwd: scope:
     let
-      edits = b.concatMap (node: commentParser.collectEdits ast.text node 0) ast.roots;
+      edits = b.concatMap (node: commentParser.collectEdits ast.index node 0) ast.roots;
       sorted = b.sort (a: c:
         if a.targetStart != c.targetStart
         then a.targetStart > c.targetStart
@@ -143,14 +193,14 @@ let
     in
       result.text;
 
-  transformValueIFD = expr: current: cwd: scope: location: text:
+  transformValueIFD = name: current: cwd: scope: location: text: exprs:
     builtins.addErrorContext (errors.errorMessage text {
       offset = location;
       msg = "";
       context = "template";
     }) (
       let
-        evaluated = evalExprIFD expr current cwd scope;
+        evaluated = exprs.${name} current;
         value =
           if b.isFunction evaluated
           then evaluated current
@@ -161,7 +211,7 @@ let
         render.renderValue value
     );
 
-  applyEditIFD = text: scope: cwd: adjustments: edit:
+  applyEditIFD = text: scope: cwd: adjustments: edit: exprs:
     let
       adjustedEnd = edit.targetEnd + adjustmentFor edit adjustments;
       current =
@@ -175,18 +225,18 @@ let
         then
           let
             go = i: ctx:
-              if i >= b.length edit.asts
+              if i >= b.length edit.expressionNames
               then ctx
               else
                 let
-                  expr = b.elemAt edit.expressions i;
+                  name = b.elemAt edit.expressionNames i;
                   location = b.elemAt edit.expressionStarts i;
-                  next = transformValueIFD expr ctx cwd scope location text;
+                  next = transformValueIFD name ctx cwd scope location text exprs;
                 in
                   go (i + 1) next;
           in
             go 0 current
-        else transformValueIFD edit.expression current cwd scope edit.expressionStart text;
+        else transformValueIFD (b.head edit.expressionNames) current cwd scope edit.expressionStart text exprs;
       finalReplacement =
         if edit.type == "blockOpen" && current == "" && replacement != "" && !(b.substring (b.stringLength replacement - 1) 1 replacement == "\n")
         then replacement + "\n"
@@ -207,18 +257,21 @@ let
 
   renderTemplateIFD = ast: cwd: scope:
     let
-      edits = b.concatMap (node: commentParser.collectEdits ast.text node 0) ast.roots;
+      edits = b.concatMap (node: commentParser.collectEdits ast.index node 0) ast.roots;
       sorted = b.sort (a: c:
         if a.targetStart != c.targetStart
         then a.targetStart > c.targetStart
         else a.depth > c.depth
       ) edits;
+      indexed = indexExpressions sorted;
+      file = b.toFile "template-exprs.nix" (exprFile indexed.expressions);
+      exprs = import file ({ cwd = cwd; } // scope);
       result = b.foldl' (state: edit:
-        applyEditIFD state.text scope cwd state.adjustments edit
+        applyEditIFD state.text scope cwd state.adjustments edit exprs
       ) {
         text = ast.text;
         adjustments = [];
-      } sorted;
+      } indexed.edits;
     in
       result.text;
 in {
