@@ -43,19 +43,6 @@ similar to Yolk. Explicit form:
 commentStyle = { open = "# "; close = ""; };
 ```
 
-By default expressions are evaluated with the self-hosted Nix evaluator
-(`useNixParser = true`), which needs no IFD. Set `useNixParser = false` to
-evaluate them with the host evaluator through a generated file instead, which
-is faster on large templates at the cost of IFD:
-
-```nix
-template.v2.eval {
-  file = ./README.md;
-  scope.code = import ./dev/code.nix;
-  useNixParser = false;
-}
-```
-
 Supported marker forms:
 
 - `{< expr >}`: transform text before the marker on the same line.
@@ -96,16 +83,14 @@ On the YAML README (492 lines, 32 markers, real code examples) the three
 approaches measure the same, because most of the time goes into evaluating
 the embedded code examples (about 1.2 s of the 1.35 s):
 
-- self-hosted (`useNixParser = true`): about 1.33 s
-- IFD (`useNixParser = false`): about 1.34 s
-- previous IFD/regex parser (`github:fmway/lib`): about 1.35 s
+- self-hosted: about 1.33 s
+- previous IFD/regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 1.35 s
 
 With the code examples replaced by cheap ones, so that only the parsing and
 the rendering are measured, the new parser is twice as fast:
 
 - self-hosted: about 0.12 s
-- IFD: about 0.11 s
-- previous IFD/regex parser: about 0.24 s
+- previous IFD/regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 0.24 s
 
 On a 300-line file with 100 blocks all three measure about 0.24 s.
 

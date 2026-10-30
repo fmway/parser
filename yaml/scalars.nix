@@ -34,6 +34,7 @@ with state;
 let
   b = builtins;
   concat = b.concatStringsSep "";
+  inherit (import ../utils) mod;
 
   hexTable = {
     "0" = 0; "1" = 1; "2" = 2; "3" = 3; "4" = 4; "5" = 5; "6" = 6; "7" = 7;
@@ -52,8 +53,6 @@ let
   # A four digit hexadecimal number, zero padded.
   hex4 = n:
     let
-      # The remainder of a division, for non-negative integers.
-      mod = x: y: x - y * b.div x y;
       digit = v: b.substring (mod v 16) 1 hexDigits;
       # The place value of the i-th digit from the right.
       place = i: if i == 0 then 1 else 16 * place (i - 1);
@@ -1145,9 +1144,6 @@ in rec {
             else if b.substring i 1 alphabet == c then i
             else find (i + 1);
         in find 0;
-
-      # The remainder of a division, for non-negative integers.
-      mod = x: y: x - y * b.div x y;
 
       # A single byte, as a string. A null byte cannot be represented
       # in a Nix string, so it is dropped.

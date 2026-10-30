@@ -9,7 +9,7 @@ let
     nixParser = nix.parser;
     inherit strings;
   };
-  helpers = import ./helpers.nix { inherit strings; };
+  helpers = import ./helpers.nix { inherit strings render; };
   commentRender = import ./comment-render.nix {
     inherit commentParser helpers nix render errors strings;
     stringsPath = toString ./string.nix;
@@ -26,25 +26,22 @@ let
   };
 
   v1 = let
-    parse = args:
-      let
-        r = resolve args;
-        parsed = parser.safeParse {
-          inherit (args) prefix postfix;
-          text = r.text;
-        };
-      in
-        if parsed.type == "error"
-        then throw (errors.errorMessage r.text parsed.value)
-        else parsed.value;
+    parse = args: let
+      r = resolve args;
+      parsed = parser.safeParse {
+        inherit (args) prefix postfix;
+        text = r.text;
+      };
+    in
+      if parsed.type == "error" then
+        throw (errors.errorMessage r.text parsed.value)
+      else parsed.value;
 
-    eval = args:
-      let
-        r = resolve args;
-        parsed = parse args;
-        scope = args.scope or {};
-      in
-        render.renderSegments parsed.text parsed.segments r.cwd scope;
+    eval = args: let
+      r = resolve args;
+      parsed = parse args;
+      scope = args.scope or {};
+    in render.renderSegments parsed.text parsed.segments r.cwd scope;
   in {
     inherit parse eval;
     safeParse = args:
@@ -62,36 +59,29 @@ let
         commentStyle = args.commentStyle or "auto";
       };
 
-    parse = args:
-      let
-        r = resolve args;
-        parsed = safeParse args;
-      in
-        if parsed.type == "error"
-        then throw (errors.errorMessage r.text parsed.value)
-        else parsed.value;
+    parse = args: let
+      r = resolve args;
+      parsed = safeParse args;
+    in
+      if parsed.type == "error" then
+        throw (errors.errorMessage r.text parsed.value)
+      else parsed.value;
 
-    eval = args:
-      let
-        r = resolve args;
-        scope = args.scope or {};
-        useNixParser = args.useNixParser or true;
-        interpolated =
-          if args.interpolation or null == null
-          then r.text
-          else v1.eval {
-            inherit (args.interpolation) postfix prefix;
-            inherit (r) text cwd;
-            inherit scope;
-          };
-        parsed = parse {
-          text = interpolated;
-          commentStyle = args.commentStyle or "auto";
+    eval = args: let
+      r = resolve args;
+      scope = args.scope or {};
+      interpolated =
+        if args.interpolation or null == null then r.text
+        else v1.eval {
+          inherit (args.interpolation) postfix prefix;
+          inherit (r) text cwd;
+          inherit scope;
         };
-      in
-        if useNixParser
-        then commentRender.renderTemplate parsed r.cwd scope
-        else commentRender.renderTemplateIFD parsed r.cwd scope;
+      parsed = parse {
+        text = interpolated;
+        commentStyle = args.commentStyle or "auto";
+      };
+    in commentRender.renderTemplate parsed r.cwd scope;
   in {
     inherit safeParse parse eval;
     mkScript = utils.mkScript "gen-template.sh" eval;
