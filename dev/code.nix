@@ -16,6 +16,9 @@
   simple-nix-eval =
     run ''(import ./nix).eval "1 + 2"'';
   output = lib.fmway.genNix.oneliner;
+
+  simple-sed =
+    run ''sed "s/foo/bar/" "a foo line"'';
 in {
   examples = {
     nix-eval-simple = code ''
@@ -159,6 +162,40 @@ in {
       nix eval --impure --json --expr \
         'import ./yaml/tests.nix { }' --apply 't: t.summary'
       # => ${output (eval "(import ./yaml/tests.nix { }).summary")}
+    '';
+
+    sed-quickstart = code ''
+      let
+        sed = import ./sed;
+      in ${simple-sed}
+    ''; 
+
+    sed-simple = code simple-sed;
+
+    sed-param-quiet = code (run
+      ''sed { quiet = true; } "s/foo/bar/" "a foo line"'');
+
+    sed-run-simple = code (run
+      ''sed.run { } "s/foo/bar/" "a foo line"'');
+
+    sed-safe-parse-quickstart = code [
+      ''
+        sed.safeParse { } "s/foo/bar/"
+        # => { type = "success"; value = { type = "script"; commands = [ ... ]; }; }
+      ''
+      (run ''sed.safeParse { } "s/foo/bar"'')
+    ];
+
+    sed-apply-quickstart = code (run ''
+      let
+        script = sed.parse { } "s/foo/bar/";
+      in sed.apply { } script "a foo line"
+    '');
+
+    sed-tests = code.sh ''
+      nix eval --impure --json --expr 'import ./sed/tests.nix { }' \
+        --apply 't: t.summary'
+      # => ${output (eval "(import ./sed/tests.nix { }).summary")}
     '';
   };
 }
