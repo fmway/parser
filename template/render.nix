@@ -20,11 +20,9 @@ let
       if segment.type == "literal"
       then segment.text
       else
-        builtins.addErrorContext (errors.errorMessage text {
-          offset = segment.expressionStart;
-          msg = "";
-          context = "template";
-        }) (renderValue (nix.evalAst {
+        builtins.addErrorContext (errors.errorMessage text
+          (errors.evaluationError "template.v1" segment.expression segment.expressionStart)
+        ) (renderValue (nix.evalAst {
           ast = segment.ast;
           inherit cwd scope;
         }))

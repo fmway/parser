@@ -1,6 +1,7 @@
 let
   b = builtins;
   style = import ../utils/style.nix;
+  strings = import ./string.nix;
   stringMultiply = str: size:
     b.concatStringsSep "" (b.genList (_: str) size);
 
@@ -26,6 +27,11 @@ let
   errorMessage = str: e:
     let
       offset = e.offset or 0;
+      # The parsers of the templates write the text of the error in
+      # `message`, and the parser of Nix writes it in `msg`. Both are
+      # read here, so that the message of the error is the one the
+      # parser gave and not a placeholder.
+      message = e.message or (e.msg or "invalid template");
       len = b.stringLength str;
       pos =
         if e ? line && e ? col
@@ -69,7 +75,8 @@ let
                     else go rest (w' + (8 - (w' - (w' / 8) * 8)));
             in go (splitAt "[\t]" (b.substring 0 markCol text)) start;
         in
-          stringMultiply " " (width - start) + "${style.red "^"} ${style.magenta (e.msg or "invalid template")}";
+          stringMultiply " " (width - start) + "${style.red "^"}"
+          + (if message == "" then "" else " ${style.magenta message}");
       show = l:
         let
           no = toString l.no;
@@ -82,6 +89,17 @@ let
             (l: show l + (if l.no == shownAt then "\n" + stringMultiply " " numWidth + "| " + mark else ""))
             shown
         );
+  # The error of an expression of a template that could not be evaluated.
+  #
+  # The message says which expression went wrong, so that the reader of
+  # the error knows which expression of the template to look at. The
+  # expression is cut short and put on one line, so that the text next
+  # to the caret of the error stays on one line.
+  evaluationError = context: expression: offset: {
+    inherit offset context;
+    message = "error while evaluating '${strings.oneLine 60 (strings.trim expression)}'";
+  };
+
 in {
-  inherit errorMessage;
+  inherit errorMessage evaluationError;
 }

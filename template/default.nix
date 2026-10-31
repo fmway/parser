@@ -18,6 +18,15 @@ let
 
   b = builtins;
 
+  # Report that a template could not be parsed.
+  #
+  # The message is added to the error as a trace, so that the caller
+  # sees that the template was being parsed when it went wrong. The
+  # throw is inside a function, because the context is added to an
+  # error that is already being thrown, and not to one that is raised
+  # while the arguments of a call are evaluated.
+  fail = msg: b.addErrorContext "while parsing a template" (b.throw msg);
+
   resolve = args: {
     text =
       args.text or (b.readFile (args.file or (throw "template: expected `text` or `file`")));
@@ -29,7 +38,8 @@ let
     parse = args: let
       r = resolve args;
       parsed = parser.safeParse {
-        inherit (args) prefix postfix;
+        prefix = args.prefix or null;
+        postfix = args.postfix or null;
         text = r.text;
       };
     in
@@ -46,7 +56,8 @@ let
     inherit parse eval;
     safeParse = args:
       parser.safeParse {
-        inherit (args) prefix postfix;
+        prefix = args.prefix or null;
+        postfix = args.postfix or null;
         inherit (resolve args) text;
       };
     mkScript = utils.mkScript "gen-template.sh" eval;
@@ -64,7 +75,7 @@ let
       parsed = safeParse args;
     in
       if parsed.type == "error" then
-        throw (errors.errorMessage r.text parsed.value)
+        fail (errors.errorMessage r.text parsed.value)
       else parsed.value;
 
     eval = args: let
@@ -73,7 +84,8 @@ let
       interpolated =
         if args.interpolation or null == null then r.text
         else v1.eval {
-          inherit (args.interpolation) postfix prefix;
+          prefix = args.interpolation.prefix or null;
+          postfix = args.interpolation.postfix or null;
           inherit (r) text cwd;
           inherit scope;
         };

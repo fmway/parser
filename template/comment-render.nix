@@ -13,9 +13,13 @@ let
       else total
     ) 0 adjustments;
 
-  transformValue = ast: current: cwd: scope: location: text:
-    builtins.addErrorContext (errors.errorMessage text { offset = location; msg = ""; context = "template"; })
-      render.renderValue (do (nix.evalAst { inherit ast cwd; scope = scopeFor scope current; }) current);
+  transformValue = ast: expression: current: cwd: scope: location: text:
+    # The value of the expression is computed inside the parentheses,
+    # so that the error of the evaluation is raised inside of them and
+    # the context of the template is shown with it.
+    builtins.addErrorContext (errors.errorMessage text
+      (errors.evaluationError "template.v2" expression location)
+    ) (render.renderValue (do (nix.evalAst { inherit ast cwd; scope = scopeFor scope current; }) current));
 
   applyEdit = text: scope: cwd: adjustments: edit: let
     adjustedEnd = edit.targetEnd + adjustmentFor edit adjustments;
@@ -30,11 +34,12 @@ let
             if i >= b.length edit.asts then ctx
             else let
               ast = b.elemAt edit.asts i;
+              expression = b.elemAt edit.expressions i;
               location = b.elemAt edit.expressionStarts i;
-              next = transformValue ast ctx cwd scope location text;
+              next = transformValue ast expression ctx cwd scope location text;
             in go (i + 1) next;
         in go 0 current
-      else transformValue edit.ast current cwd scope edit.expressionStart text;
+      else transformValue edit.ast edit.expression current cwd scope edit.expressionStart text;
     finalReplacement =
       if edit.type == "blockOpen" && current == "" && replacement != "" && !(b.substring (b.stringLength replacement - 1) 1 replacement == "\n") then
         replacement + "\n"

@@ -36,6 +36,9 @@ let
     in
       details // {
         inherit message offset;
+        # The context of the parser of Nix is not shown, the error is
+        # in the template and not in a Nix file.
+        context = "template.v2";
         line = location.line;
         column = location.column;
         col = location.column - 1;

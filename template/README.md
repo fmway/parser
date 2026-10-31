@@ -62,6 +62,16 @@ v2 comment-driven transforms are inspired by [Yolk](https://github.com/elkowar/y
 Parse errors are rendered like the YAML parser: phase, line, column, source excerpt, and
 a caret under the failing character.
 
+The errors of an expression that cannot be evaluated are rendered the same way, and the
+place in the template where the expression stands is shown with the error of Nix, so that
+the message of Nix and the place it went wrong are seen together.
+
+## Tests
+
+```console
+nix-instantiate --eval --strict -E '(import ./template/tests.nix).summary'
+```
+
 ## Benchmark
 
 Measured with `nix eval` on a 1000-line template containing 1000 interpolations:

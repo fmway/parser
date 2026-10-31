@@ -210,6 +210,18 @@ let
           if n >= count then length else breakAt n;
     };
 
+  # The text of an expression on one line, cut to `limit` characters.
+  #
+  # The text is shown next to the caret of an error, and it has to stay
+  # on one line, or the layout of the error is broken.
+  oneLine = limit: text:
+    let
+      flat = b.replaceStrings [ "\n" "\r" "\t" ] [ " " " " " " ] text;
+    in
+      if b.stringLength flat <= limit
+      then flat
+      else b.substring 0 limit flat + "…";
+
   # The start of the line that holds `offset`.
   #
   # The search for the line break is one pass over the text in front of
@@ -263,6 +275,7 @@ in {
     lastNonSpace
     lastNonSpaceIn
     trim
+    oneLine
     lineStart
     lineEnd
     ;

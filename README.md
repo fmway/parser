@@ -41,6 +41,7 @@ yaml.parse { } "key: value"
 ```console
 nix eval --impure --json --expr 'import ./yaml/tests.nix { }' --apply 't: t.summary'
 nix-instantiate --eval --strict -E '(import ./nix/tests.nix).summary'
+nix-instantiate --eval --strict -E '(import ./template/tests.nix).summary'
 ```
 
 ## Examples
