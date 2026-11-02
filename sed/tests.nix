@@ -44,6 +44,17 @@ let
     { script = "s/\\(a\\)/&-&/"; expected = "foo ba-ar\nba-az qux\nfoo a-again\nla-ast line\n"; }
     { script = "s/\\//X/g"; expected = "foo bar\nbaz qux\nfoo again\nlast line\n"; }
     { script = "s/./\\n/g"; expected = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"; }
+    { script = "s/foo/\\UFOO\\E bar/"; expected = "FOO bar bar\nbaz qux\nFOO bar again\nlast line\n"; }
+    { script = "s/foo/\\Ufoo bar/"; expected = "FOO BAR bar\nbaz qux\nFOO BAR again\nlast line\n"; }
+    { script = "s/foo/\\ufoo/"; expected = "Foo bar\nbaz qux\nFoo again\nlast line\n"; }
+    { script = "s/foo/\\lFOO/"; expected = "fOO bar\nbaz qux\nfOO again\nlast line\n"; }
+    { script = "s/\\(o\\)/\\U&/"; expected = "fOo bar\nbaz qux\nfOo again\nlast line\n"; }
+    { script = "s/foo/\\u&/"; expected = "Foo bar\nbaz qux\nFoo again\nlast line\n"; }
+    { script = "s/foo/\\UABC\\lDEF/"; expected = "ABCdEF bar\nbaz qux\nABCdEF again\nlast line\n"; }
+    { script = "s/foo/\\LABC\\EDEF/"; expected = "abcDEF bar\nbaz qux\nabcDEF again\nlast line\n"; }
+    { script = "s/foo/\\u\\Efoo/"; expected = "foo bar\nbaz qux\nfoo again\nlast line\n"; }
+    { script = "s/foo/\\l\\Ufoo/"; expected = "FOO bar\nbaz qux\nFOO again\nlast line\n"; }
+    { script = "s/\\(foo\\) \\(bar\\)/\\U\\1 \\2/"; expected = "FOO BAR\nbaz qux\nfoo again\nlast line\n"; }
     { script = "y/abc/xyz/"; expected = "foo yxr\nyxz qux\nfoo xgxin\nlxst line\n"; }
     { script = "p"; expected = "foo bar\nfoo bar\nbaz qux\nbaz qux\nfoo again\nfoo again\nlast line\nlast line\n"; }
     { script = "d"; expected = ""; }
@@ -269,6 +280,13 @@ x";
       script = "";
       input = "";
       expected = "";
+    }
+    {
+      # The case of the next character waits for the next text, when
+      # the group is empty.
+      script = "s/\\(x\\)\\(z*\\)/\\u\\2z/";
+      input = "x\n";
+      expected = "Z\n";
     }
   ];
 

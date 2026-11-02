@@ -67,6 +67,7 @@ let
   lowerChar = c: if b.hasAttr c upperIndex then b.elemAt lowerList upperIndex.${c} else c;
   upperChar = c: if b.hasAttr c lowerIndex then b.elemAt upperList lowerIndex.${c} else c;
   lowerText = t: b.replaceStrings upperList lowerList t;
+  upperText = t: b.replaceStrings lowerList upperList t;
 
   # ------------------------------------------------------------------
   # Character classes
@@ -1051,6 +1052,10 @@ in {
 
   # The code of a character, for the callers that need it.
   ord = ord;
+
+  # The case of a text, for the callers that need it.
+  lowerText = lowerText;
+  upperText = upperText;
 
   # The pieces of the engine, for the callers that want them.
   modules = {

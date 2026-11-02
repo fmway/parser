@@ -151,6 +151,17 @@ The address is one of these, or null when the command has none:
 { type = "range"; from; relative; } -- `addr1,+N`
 ```
 
+The replacement of the `s` command is a list of parts:
+
+```nix
+{ type = "text"; text; }             -- some text
+{ type = "match"; }                   -- the whole match (`&`)
+{ type = "group"; index; }            -- the group `index` (`\1` to `\9`)
+{ type = "case"; mode; once; }        -- a change of the case: "upper", "lower" or
+                                        -- "none", for the next character only when
+                                        -- `once` is true
+```
+
 ### The commands
 
 | Command | Meaning |
@@ -188,6 +199,13 @@ the line when a substitution happened), `I` (the case does not matter) and
 `M` (the `^` and the `$` match at the line breaks inside the pattern
 space). A number is the number of the match that is replaced, so
 `s/a/b/2` replaces the second match.
+
+The replacement of the `s` command can change the case of the text:
+`\u` puts the next character in upper case, `\l` puts it in lower
+case, `\U` puts everything that comes after it in upper case, `\L`
+puts it in lower case, and `\E` ends the change of the case. The
+change of the case reaches the matches and the groups of the
+replacement as well, and it only changes the letters of ASCII.
 
 ## The regular expressions
 
@@ -247,7 +265,7 @@ as well:
 ```sh
 nix eval --impure --json --expr 'import ./sed/tests.nix { }' \
   --apply 't: t.summary'
-# => { failed = 0; passed = 134; total = 134; }
+# => { failed = 0; passed = 146; total = 146; }
 ```
 <!--{% end %}-->
 

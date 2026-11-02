@@ -312,8 +312,9 @@ let
 
   # The parts of a replacement.
   #
-  # A part is either some text, the whole match (`&`) or a group
-  # (`\1` to `\9`).
+  # A part is either some text, the whole match (`&`), a group
+  # (`\1` to `\9`), or a change of the case of the text that comes
+  # after it (`\u`, `\U`, `\l`, `\L` and `\E`).
   parseReplacement = text:
     let
       go = i: parts:
@@ -331,6 +332,15 @@ let
               else if d == "t" then go (i + 2) (parts ++ [ { type = "text"; text = "\t"; } ])
               else if d == "r" then go (i + 2) (parts ++ [ { type = "text"; text = "\r"; } ])
               else if d >= "1" && d <= "9" then go (i + 2) (parts ++ [ { type = "group"; index = b.fromJSON d; } ])
+              # The case of the text that comes after: `\u` and `\l`
+              # change the case of the next character only, and `\U`
+              # and `\L` change the case of everything that comes
+              # after them, until `\E`.
+              else if d == "u" then go (i + 2) (parts ++ [ { type = "case"; mode = "upper"; once = true; } ])
+              else if d == "l" then go (i + 2) (parts ++ [ { type = "case"; mode = "lower"; once = true; } ])
+              else if d == "U" then go (i + 2) (parts ++ [ { type = "case"; mode = "upper"; once = false; } ])
+              else if d == "L" then go (i + 2) (parts ++ [ { type = "case"; mode = "lower"; once = false; } ])
+              else if d == "E" then go (i + 2) (parts ++ [ { type = "case"; mode = "none"; once = false; } ])
               # A line break behind a backslash is nothing.
               else if d == "\n" then go (i + 2) parts
               else go (i + 2) (parts ++ [ { type = "text"; text = d; } ])

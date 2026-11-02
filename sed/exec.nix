@@ -210,9 +210,15 @@ let
       go 0 [];
 
   # The text of a replacement, for a match.
+  #
+  # The parts of the replacement are put one after the other, and the
+  # case of the text is changed when the replacement says so: `\u` and
+  # `\l` change the case of the next character, and `\U` and `\L`
+  # change the case of everything that comes after them, until `\E`.
   replacementText = cmd: text: m:
-    b.concatStringsSep "" (
-      b.map (part:
+    let
+      # The text that a part gives.
+      partText = part:
         if part.type == "text" then
           part.text
         else if part.type == "match" then
@@ -221,9 +227,66 @@ let
           let
             g = b.elemAt m.groups (part.index - 1);
           in
-            if g == null then "" else b.substring g.start (g.end - g.start) text
-      ) cmd.replacement
-    );
+            if g == null then "" else b.substring g.start (g.end - g.start) text;
+
+      # The text with its case changed.
+      #
+      # The mode is "upper", "lower" or "none".
+      caseText = mode: t:
+        if mode == "upper" then regex.upperText t
+        else if mode == "lower" then regex.lowerText t
+        else t;
+
+      # The state of the case of the text.
+      #
+      # `mode` is the case that goes on until `\E`, and `next` is the
+      # case of the next character only.
+      init = { out = ""; mode = "none"; next = "none"; };
+
+      go = i: st:
+        if i >= b.length cmd.replacement then st.out
+        else
+          let
+            part = b.elemAt cmd.replacement i;
+          in
+            if part.type == "case" then
+              # A change of the case: `\u` and `\l` change the case of
+              # the next character, and the others change the case of
+              # everything that comes after them, until `\E`.
+              let
+                st' =
+                  if part.once then st // { next = part.mode; }
+                  else st // { mode = part.mode; next = "none"; };
+              in
+                go (i + 1) st'
+            else
+              let
+                chunk = partText part;
+                # The chunk with its case changed.
+                #
+                # The first character gets the case of `next`, when
+                # there is one, and the rest of the chunk gets the case
+                # of `mode`.
+                changed =
+                  if st.next == "none" then
+                    { text = caseText st.mode chunk; next = "none"; }
+                  else if chunk == "" then
+                    # A chunk that is empty does not use the case of
+                    # the next character: it waits for the next chunk.
+                    { text = ""; next = st.next; }
+                  else
+                    let
+                      first = b.substring 0 1 chunk;
+                      rest = b.substring 1 (b.stringLength chunk - 1) chunk;
+                    in
+                    {
+                      text = caseText st.next first + caseText st.mode rest;
+                      next = "none";
+                    };
+              in
+                go (i + 1) (st // { out = st.out + changed.text; next = changed.next; });
+    in
+      go 0 init;
 
   # The text with the matches replaced.
   #

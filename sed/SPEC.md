@@ -103,6 +103,24 @@ but the last ends with a backslash, and the blanks of the lines are kept.
 | `M` | The `^` and the `$` match at the line breaks of the pattern space |
 | a number | Replace that match, and not the first one |
 
+### The escapes of the replacement of `s`
+
+| Escape | Meaning |
+| --- | --- |
+| `\n`, `\t`, `\r` | A line break, a tab, a carriage return |
+| `&` | The whole match |
+| `\1` to `\9` | The group that was matched |
+| `\u` | Put the next character in upper case |
+| `\l` | Put the next character in lower case |
+| `\U` | Put everything that comes after in upper case, until `\E` |
+| `\L` | Put everything that comes after in lower case, until `\E` |
+| `\E` | End the change of the case |
+
+The change of the case reaches the text of the replacement, the whole
+match and the groups as well. `\u` and `\l` wait for the next
+character that the replacement gives, so they do nothing when there is
+none. The letters of ASCII are the ones whose case is changed.
+
 ## The regular expressions
 
 The engine understands the basic regular expressions of POSIX with the
