@@ -52,7 +52,6 @@
 - [x] Path literals: `/abs`, `./rel`, `../rel`, `~/home`, bare `foo/bar`
 - [x] Path interpolation (`./${e}`, `foo/${e}`) and path concatenation
 - [x] `import` via builtin `import` with cwd awareness
-- [x] Document IFD behavior (user responsibility)
 
 ## Phase 6: Expand to More Features (Incremental)
 - [x] Conditionals `if ... then ... else ...`

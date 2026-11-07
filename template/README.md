@@ -1,7 +1,7 @@
 <!--{% ignore %}-->
 # templates
 
-Pure-Nix templating built on `nix-parsec`. It avoids IFD in the framework itself:
+Pure-Nix templating built on `nix-parsec`.
 templates are parsed into an AST and evaluated with `nix.evalAst`.
 
 ## v1: interpolation
@@ -80,7 +80,7 @@ Measured with `nix eval` on a 1000-line template containing 1000 interpolations:
 - previous [fmway.parse.v1](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix): about 1.15s (hyperfine)
 
 The previous implementation is slower mainly because it rescans the whole document
-with regexes and materializes/imports a generated Nix file (IFD). The new
+with regexes and materializes/imports a generated Nix file. The new
 implementation parses into an AST and evaluates it directly.
 
 For very small templates the difference is negligible.
@@ -94,13 +94,13 @@ approaches measure the same, because most of the time goes into evaluating
 the embedded code examples (about 1.2 s of the 1.35 s):
 
 - self-hosted: about 1.33 s
-- previous IFD/regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 1.35 s
+- previous regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 1.35 s
 
 With the code examples replaced by cheap ones, so that only the parsing and
 the rendering are measured, the new parser is twice as fast:
 
 - self-hosted: about 0.12 s
-- previous IFD/regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 0.24 s
+- previous regex parser ([fmway.parse.v2](https://github.com/fmway/lib/blob/35f1a61d31c3b63f6602a3ca31c3ac0c262fa65a/lib/fmway/parser/parse.nix)): about 0.24 s
 
 On a 300-line file with 100 blocks all three measure about 0.24 s.
 
@@ -112,7 +112,4 @@ recursion)", while the new parser takes about 1.9 s.
 
 - Delimiters are literal strings, not regular expressions.
 - Embedded expressions are full Nix expressions and are not sandboxed.
-- The framework does not create store files, but an embedded expression may still
-  use `import` or IFD.
-EOF
 <!--{% end %}-->

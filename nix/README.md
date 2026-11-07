@@ -3,12 +3,11 @@
 A Nix expression **parser and evaluator written in Nix itself**.
 
 It parses a Nix expression from a string and evaluates it inside the Nix
-evaluator, so no derivation has to be built just to evaluate code. In other
-words, it avoids Import-From-Derivation (IFD) for string evaluation:
+evaluator, so no derivation has to be built just to evaluate code.
 
 <!--{% code.examples.nix-eval-simple %}-->
 ```nix
-# The usual IFD approach:
+# The usual approach:
 #   import (builtins.toFile "expr.nix" "1 + 2")
 
 # With this project:

@@ -22,7 +22,7 @@
 in {
   examples = {
     nix-eval-simple = code ''
-      # The usual IFD approach:
+      # The usual approach:
       #   import (builtins.toFile "expr.nix" "1 + 2")
 
       # With this project:

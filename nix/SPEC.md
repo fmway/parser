@@ -2,7 +2,7 @@
 
 ## Overview
 
-We want to evaluate Nix expressions written as strings using Nix itself, without relying on Import-From-Derivation (IFD). The goal is to parse and evaluate a subset of Nix with lazy semantics (thunks), while delegating builtins to the real `builtins` where possible ("FFI style") and allowing controlled overrides via `scope`.
+We want to evaluate Nix expressions written as strings using Nix itself. The goal is to parse and evaluate a subset of Nix with lazy semantics (thunks), while delegating builtins to the real `builtins` where possible ("FFI style") and allowing controlled overrides via `scope`.
 
 This is a long-term project aiming for full support eventually, but implementation will be incremental starting from a minimal subset.
 
@@ -104,7 +104,7 @@ Note: The evaluator should prefer using the real builtin operations where they e
 - Curated builtins are available globally (FFI); everything is also accessible
   via `builtins.*`. 
 - If `scope.builtins` exists, it overrides builtins.
-- `import` should go through builtin `import` behaviorally, but path resolution needs to consider `cwd` (especially for relative paths in attrset form). Using `import` on existing files is not IFD; forcing IFD is up to the user calling code.
+- `import` should go through builtin `import` behaviorally, but path resolution needs to consider `cwd` (especially for relative paths in attrset form).
 - All builtins accessible via `builtins.*` should be bridged without reimplementation where feasible.
 
 ## Paths & Relative Resolution

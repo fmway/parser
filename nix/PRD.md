@@ -2,14 +2,14 @@
 
 ## Problem Statement
 
-Users want to evaluate Nix expressions as strings without using Import-From-Derivation (IFD). IFD is often avoided in hermetic builds and by community preference. Example of IFD: `import (builtins.toFile "eval.nix" "1 + 2")`. A self-hosted evaluator in Nix avoids writing derivation-backed files just to evaluate expressions.
+Users want to evaluate Nix expressions as strings in pure nix. The usual approach is `import (builtins.toFile "eval.nix" "1 + 2")`. A self-hosted evaluator in Nix avoids writing derivation-backed files just to evaluate expressions.
 
 ## Goals
 
 1. Provide `eval` API as specified:
    - `(import ./nix).eval "nix expr"` 
    - `(import ./nix).eval { text, cwd?, scope? }`
-2. Avoid IFD by design (evaluation happens in pure Nix).
+2. evaluation happens in pure Nix (no builtins.toFile).
 3. Lazy evaluation with thunks (don't eagerly translate vars).
 4. Operator semantics exactly as specified.
 5. Builtins accessible via FFI (call existing builtins), with `scope.builtins` override.
@@ -27,7 +27,7 @@ Users want to evaluate Nix expressions as strings without using Import-From-Deri
 
 ## User Stories
 
-- As a user, I want to eval small Nix expressions as strings without IFD.
+- As a user, I want to eval small Nix expressions as strings.
 - As a user, I want to inject custom variables via `scope`.
 - As a user, I want to override builtins via `scope.builtins`.
 - As a user, I want to evaluate relative imports by passing `cwd` in attrset form.
@@ -48,7 +48,7 @@ Users want to evaluate Nix expressions as strings without using Import-From-Deri
 - [x] cwd inference via `unsafeGetAttrPos` in attrset form
 
 ### Non-Functional
-- [x] Pure Nix (no IFD)
+- [x] Pure Nix (no builtins.toFile)
 - [x] Lazy/thunk-based where possible
 - [x] Extensible architecture for incremental full support
 - [x] Clear errors (parse errors include line/column; wording differs from Nix)
@@ -76,7 +76,7 @@ Users want to evaluate Nix expressions as strings without using Import-From-Deri
 
 ## Success Metrics
 
-- Can eval basic arithmetic/strings/lets without IFD
+- Can eval basic arithmetic/strings/lets
 - Operator semantics match exactly
 - Scope/builtins work as specified
 - Passes comparison tests vs real Nix for supported subset
